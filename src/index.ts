@@ -4,17 +4,20 @@ import { env } from './config/env.js';
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
-  console.log(`🚀 Freelancer Hub Backend running on http://localhost:${env.PORT}`);
-  console.log(`📡 Environment: ${env.NODE_ENV}`);
+  console.log(`🚀 Freelancer Hub Backend ejecutándose en http://localhost:${env.PORT}`);
+  console.log(`📡 Entorno: ${env.NODE_ENV}`);
 });
 
-const gracefulShutdown = (signal: string) => {
-  console.log(`\n🛑 Received ${signal}, closing server gracefully...`);
+/**
+ * Cierre controlado del servidor HTTP ante señales de terminación del sistema (Graceful Shutdown).
+ */
+const cierreControlado = (senal: string) => {
+  console.log(`\n🛑 Recibida señal ${senal}, cerrando el servidor de forma segura...`);
   server.close(() => {
-    console.log('✅ HTTP server closed. Process terminating.');
+    console.log('✅ Servidor HTTP cerrado. Proceso finalizado.');
     process.exit(0);
   });
 };
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => cierreControlado('SIGTERM'));
+process.on('SIGINT', () => cierreControlado('SIGINT'));

@@ -5,12 +5,16 @@ import morgan from 'morgan';
 import { env } from './config/env.js';
 import { apiRouter } from './routes/index.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
-import { errorHandler } from './middlewares/errorHandler.js';
+import { centralizedErrorHandler } from './presentation/middlewares/error-handler.middleware.js';
 
+/**
+ * Fábrica de la aplicación Express.
+ * Configura los middlewares globales de seguridad, logging, parsing y enrutamiento.
+ */
 export function createApp(): Express {
   const app = express();
 
-  // Global Security & Utility Middlewares
+  // Middlewares globales de seguridad y utilidades
   app.use(helmet());
   app.use(
     cors({
@@ -22,21 +26,21 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Base endpoint
+  // Endpoint base de bienvenida e información de la API
   app.get('/', (_req, res) => {
     res.json({
-      name: 'Freelancer Hub Backend API',
-      status: 'online',
+      nombre: 'Freelancer Hub Backend API',
+      estado: 'en_linea',
       version: '1.0.0',
     });
   });
 
-  // API Routes
+  // Rutas de la API
   app.use('/api', apiRouter);
 
-  // Error Handling Middlewares
+  // Middlewares de captura de 404 y manejo centralizado de errores
   app.use(notFoundHandler);
-  app.use(errorHandler);
+  app.use(centralizedErrorHandler);
 
   return app;
 }
