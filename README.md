@@ -313,6 +313,8 @@ pnpm start
 | Método | Endpoint | Acceso | Descripción | Respuesta |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Público | Estado general del servicio API | `200 OK` |
+| `GET` | `/api/docs` | Público | Documentación interactiva Swagger UI (OpenAPI 3.0) | `200 OK` |
+| `GET` | `/api/docs.json` | Público | Especificación OpenAPI en formato JSON | `200 OK` |
 | `GET` | `/api/health` | Público | Estado de salud, uptime y timestamp del servidor | `200 OK` |
 | `POST` | `/api/v1/auth/register` | Público | Registro de nuevo usuario (Cliente / Freelancer) | `201 Created` |
 | `POST` | `/api/v1/auth/login` | Público | Inicio de sesión y emisión de tokens JWT | `200 OK` |

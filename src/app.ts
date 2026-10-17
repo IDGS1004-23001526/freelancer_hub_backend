@@ -2,14 +2,16 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
+import { swaggerSpec } from './config/swagger.js';
 import { apiRouter } from './routes/index.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { centralizedErrorHandler } from './presentation/middlewares/error-handler.middleware.js';
 
 /**
  * Fábrica de la aplicación Express.
- * Configura los middlewares globales de seguridad, logging, parsing y enrutamiento.
+ * Configura los middlewares globales de seguridad, logging, parsing, documentación Swagger y enrutamiento.
  */
 export function createApp(): Express {
   const app = express();
@@ -26,12 +28,20 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Documentación interactiva Swagger UI y especificación JSON
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get('/api/docs.json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  });
+
   // Endpoint base de bienvenida e información de la API
   app.get('/', (_req, res) => {
     res.json({
       nombre: 'Freelancer Hub Backend API',
       estado: 'en_linea',
       version: '1.0.0',
+      documentacion: '/api/docs',
     });
   });
 
