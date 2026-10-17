@@ -7,6 +7,10 @@ const envSchema = z.object({
   PORT: z.string().default('4000').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_ORIGIN: z.string().default('http://localhost:3000'),
+  DATABASE_URL: z
+    .string()
+    .url('DATABASE_URL debe ser una URL de conexión válida')
+    .default('postgresql://postgres:postgres@localhost:5432/freelancer_hub?schema=public'),
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET debe tener al menos 32 caracteres').default('freelancer_hub_super_secret_access_jwt_key_2026!#'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET debe tener al menos 32 caracteres').default('freelancer_hub_super_secret_refresh_jwt_key_2026!#'),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
