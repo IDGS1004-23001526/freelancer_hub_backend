@@ -6,9 +6,12 @@
 
 [![Node.js Version](https://img.shields.io/badge/Node.js-22%20LTS-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x%20(ESM)-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Prisma ORM](https://img.shields.io/badge/Prisma-6.x-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Podman](https://img.shields.io/badge/Podman-Container-892CA0?style=flat-square&logo=podman&logoColor=white)](https://podman.io/)
 [![Package Manager](https://img.shields.io/badge/pnpm-12.x-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![License](https://img.shields.io/badge/license-ISC-blue?style=flat-square)](#licencia)
-[![Architecture](https://img.shields.io/badge/Architecture-Modular%20Layered-orange?style=flat-square)](#arquitectura)
+[![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20Onion-orange?style=flat-square)](#arquitectura)
 
 <p align="center">
   <a href="#-la-problemática">Problemática</a> •
@@ -16,6 +19,7 @@
   <a href="#-módulos-de-decisión-mdp">Módulos de Decisión</a> •
   <a href="#-ecosistema-de-aplicaciones">Ecosistema</a> •
   <a href="#-stack-tecnológico">Stack</a> •
+  <a href="#-base-de-datos-con-podman-linux--windows">Base de Datos (Podman)</a> •
   <a href="#-instalación-y-uso">Instalación</a> •
   <a href="#-variables-de-entorno">Variables de Entorno</a>
 </p>
@@ -118,31 +122,121 @@ flowchart LR
 
 - **Runtime:** [Node.js 22 LTS](https://nodejs.org/)
 - **Lenguaje:** [TypeScript 5.x](https://www.typescriptlang.org/) configurado en modo **ESM nativo** (`NodeNext`)
+- **ORM & Base de Datos:** [Prisma ORM](https://www.prisma.io/) + [PostgreSQL 16](https://www.postgresql.org/)
+- **Contenedores:** [Podman](https://podman.io/) (Linux & Windows)
 - **Gestor de Paquetes:** [pnpm](https://pnpm.io/)
 - **Framework Web:** [Express 4](https://expressjs.com/)
-- **Seguridad & Utilidades:** [Helmet](https://helmetjs.github.io/), [CORS](https://github.com/expressjs/cors), [Morgan](https://github.com/expressjs/morgan)
+- **Seguridad & Autenticación:** [JWT (jsonwebtoken)](https://github.com/auth0/node-jsonwebtoken), [BCrypt](https://github.com/dcodeIO/bcrypt.js), [Helmet](https://helmetjs.github.io/), [CORS](https://github.com/expressjs/cors)
 - **Validación de Datos & Entorno:** [Zod](https://zod.dev/) + [Dotenv](https://github.com/motdotla/dotenv)
-- **Desarrollo & Compilación:** [tsx](https://github.com/privatenumber/tsx), [tsc](https://www.typescriptlang.org/), [rimraf](https://github.com/isaacs/rimraf)
 
 ---
 
-## 📂 Estructura del Código
+## 📂 Estructura del Código (Clean / Onion Architecture)
 
 ```text
 freelancer_hub_backend/
+├── prisma/
+│   └── schema.prisma    # Configuración de conexión de Prisma ORM (PostgreSQL)
+├── scripts/
+│   ├── db-up.sh         # Script Bash para levantar PostgreSQL en Podman (Linux)
+│   └── db-up.ps1        # Script PowerShell para levantar PostgreSQL en Podman (Windows)
 ├── src/
+│   ├── domain/          # Capa de Dominio (Entidades, Value Objects, Interfaces de Repositorio)
+│   ├── application/     # Capa de Aplicación (Casos de Uso, DTOs, Esquemas de Validación Zod)
+│   ├── infrastructure/  # Capa de Infraestructura (Prisma Client, Seguridad JWT/BCrypt, Repositorios)
+│   ├── presentation/    # Capa de Presentación (Controladores, Rutas REST y Middlewares)
 │   ├── config/          # Variables de entorno validadas con Zod
-│   ├── middlewares/     # Middleware de seguridad, CORS, 404 y error handler global
-│   ├── routes/          # Declaración y agrupamiento de rutas REST
-│   │   ├── health.route.ts
-│   │   └── index.ts
+│   ├── container.ts     # Contenedor de Inyección de Dependencias (IoC)
 │   ├── app.ts           # Configuración de Express y middlewares globales
 │   └── index.ts         # Punto de entrada HTTP y cierre controlado (Graceful Shutdown)
-├── dist/                # Salida de compilación en JavaScript ESM
+├── compose.yaml         # Archivo Compose para Podman / Docker
 ├── .env.example         # Plantilla de variables de entorno
 ├── package.json         # Dependencias y scripts de ejecución
-├── pnpm-lock.yaml       # Lockfile determinista de pnpm
 └── tsconfig.json        # Configuración del compilador TypeScript ESM
+```
+
+---
+
+## 🐘 Base de Datos con Podman (Linux & Windows)
+
+El proyecto utiliza **PostgreSQL 16** en contenedor mediante **Podman** y **Prisma ORM**.
+
+### Opción A: Usando los Scripts Automatizados (Recomendado)
+
+#### En Linux (Bash)
+```bash
+# Mediante pnpm
+pnpm db:up
+
+# O ejecutando directamente el script
+./scripts/db-up.sh
+```
+
+#### En Windows (PowerShell)
+```powershell
+# Mediante pnpm
+pnpm db:up:win
+
+# O ejecutando directamente en PowerShell
+powershell -ExecutionPolicy Bypass -File .\scripts\db-up.ps1
+```
+
+---
+
+### Opción B: Comandos Manuales en Podman
+
+#### 🐧 En Linux
+```bash
+# 1. Crear volumen persistente
+podman volume create freelancer_hub_pgdata
+
+# 2. Levantar contenedor PostgreSQL 16
+podman run -d \
+  --name freelancer_hub_db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=freelancer_hub \
+  -p 5432:5432 \
+  -v freelancer_hub_pgdata:/var/lib/postgresql/data:Z \
+  docker.io/library/postgres:16-alpine
+```
+
+#### 🪟 En Windows (PowerShell)
+```powershell
+# 1. Iniciar la máquina virtual de Podman (si no está iniciada)
+podman machine init
+podman machine start
+
+# 2. Crear volumen persistente
+podman volume create freelancer_hub_pgdata
+
+# 3. Levantar contenedor PostgreSQL 16
+podman run -d `
+  --name freelancer_hub_db `
+  -e POSTGRES_USER=postgres `
+  -e POSTGRES_PASSWORD=postgres `
+  -e POSTGRES_DB=freelancer_hub `
+  -p 5432:5432 `
+  -v freelancer_hub_pgdata:/var/lib/postgresql/data `
+  docker.io/library/postgres:16-alpine
+```
+
+#### 🛠️ Comandos útiles de Podman y Prisma
+```bash
+# Ver estado del contenedor
+podman ps
+
+# Detener la base de datos
+podman stop freelancer_hub_db
+
+# Iniciar la base de datos nuevamente
+podman start freelancer_hub_db
+
+# Generar el cliente de Prisma
+pnpm prisma:generate
+
+# Abrir Prisma Studio (explorador visual de la BD)
+pnpm prisma:studio
 ```
 
 ---
@@ -152,10 +246,11 @@ freelancer_hub_backend/
 ### Prerrequisitos
 - **Node.js**: `>= 22.0.0`
 - **pnpm**: `>= 9.0.0`
+- **Podman**: `>= 4.x / 5.x`
 
 ### 1. Clonar el repositorio
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone git@github.com:IDGS1004-23001526/freelancer_hub_backend.git
 cd freelancer_hub_backend
 ```
 
@@ -169,13 +264,22 @@ pnpm install
 cp .env.example .env
 ```
 
-### 4. Ejecución en desarrollo
+### 4. Levantar Base de Datos
+```bash
+# Linux
+pnpm db:up
+
+# Windows
+pnpm db:up:win
+```
+
+### 5. Ejecución en desarrollo
 Inicia el servidor en modo observación con recarga automática (*hot-reload*):
 ```bash
 pnpm dev
 ```
 
-### 5. Compilación y producción
+### 6. Compilación y producción
 ```bash
 # Verificar tipos TypeScript
 pnpm typecheck
@@ -196,15 +300,25 @@ pnpm start
 | `PORT` | `number` | Puerto donde escuchará el servidor HTTP | `4000` |
 | `NODE_ENV` | `string` | Entorno de ejecución (`development`, `production`, `test`) | `development` |
 | `CLIENT_ORIGIN` | `string` | URL permitida para solicitudes vía CORS | `http://localhost:3000` |
+| `DATABASE_URL` | `string` | Cadena de conexión a PostgreSQL para Prisma ORM | `postgresql://postgres:postgres@localhost:5432/freelancer_hub?schema=public` |
+| `JWT_ACCESS_SECRET` | `string` | Clave secreta para firmar Access Tokens (HMAC-SHA256) | *(Mínimo 32 caracteres)* |
+| `JWT_REFRESH_SECRET` | `string` | Clave secreta para Refresh Tokens | *(Mínimo 32 caracteres)* |
+| `JWT_ACCESS_EXPIRATION` | `string` | Tiempo de expiración del Access Token | `15m` |
+| `JWT_REFRESH_EXPIRATION_DAYS` | `number` | Días de vigencia del Refresh Token | `7` |
 
 ---
 
-## 📡 Endpoints Base
+## 📡 Endpoints de la API
 
-| Método | Endpoint | Descripción | Respuesta |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/` | Estado general del servicio API | `200 OK` |
-| `GET` | `/api/health` | Estado de salud, uptime y timestamp del servidor | `200 OK` |
+| Método | Endpoint | Acceso | Descripción | Respuesta |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/` | Público | Estado general del servicio API | `200 OK` |
+| `GET` | `/api/health` | Público | Estado de salud, uptime y timestamp del servidor | `200 OK` |
+| `POST` | `/api/v1/auth/register` | Público | Registro de nuevo usuario (Cliente / Freelancer) | `201 Created` |
+| `POST` | `/api/v1/auth/login` | Público | Inicio de sesión y emisión de tokens JWT | `200 OK` |
+| `POST` | `/api/v1/auth/refresh-token` | Público | Rotación de Refresh Token y renovación de sesión | `200 OK` |
+| `POST` | `/api/v1/auth/logout` | Público | Revocación de sesión activa | `200 OK` |
+| `GET` | `/api/v1/auth/me` | Protegido | Perfil del usuario autenticado (`Bearer <token>`) | `200 OK` |
 
 ---
 
