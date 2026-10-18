@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
 import { swaggerSpec } from './config/swagger.js';
 import { apiRouter } from './routes/index.js';
+import { healthRouter } from './routes/health.route.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { centralizedErrorHandler } from './presentation/middlewares/error-handler.middleware.js';
 
@@ -17,10 +18,14 @@ export function createApp(): Express {
   const app = express();
 
   // Middlewares globales de seguridad y utilidades
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    })
+  );
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN,
+      origin: env.CLIENT_ORIGIN === '*' ? true : env.CLIENT_ORIGIN,
       credentials: true,
     })
   );
@@ -35,12 +40,16 @@ export function createApp(): Express {
     res.send(swaggerSpec);
   });
 
+  // Acceso directo a la página de salud en /health
+  app.use('/health', healthRouter);
+
   // Endpoint base de bienvenida e información de la API
   app.get('/', (_req, res) => {
     res.json({
       nombre: 'Freelancer Hub Backend API',
       estado: 'en_linea',
       version: '1.0.0',
+      salud: '/health',
       documentacion: '/api/docs',
     });
   });

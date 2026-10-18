@@ -13,6 +13,31 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - freelancer_hub_pgdata:/var/lib/postgresql/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-freelancer_hub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freelancer_hub_backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PORT: ${PORT:-4000}
+      NODE_ENV: ${NODE_ENV:-production}
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-*}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-freelancer_hub}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-freelancer_hub_super_secret_access_jwt_key_2026!#}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-freelancer_hub_super_secret_refresh_jwt_key_2026!#}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS:-7}
+    ports:
+      - "${PORT:-4000}:4000"
 
 volumes:
   freelancer_hub_pgdata:
