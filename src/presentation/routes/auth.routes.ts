@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Container } from '../../container.js';
 import { validateBody } from '../middlewares/validate-request.middleware.js';
+import { authRateLimiter } from '../middlewares/rate-limit.middleware.js';
 import {
   registerSchema,
   loginSchema,
@@ -13,10 +14,11 @@ export const authRouter = Router();
 /**
  * @ruta POST /api/v1/auth/register
  * @descripcion Registra una nueva cuenta de usuario (Cliente o Freelancer)
- * @acceso Público
+ * @acceso Público (Protegido con Rate Limiting: máx 5 intentos / 15 min por IP)
  */
 authRouter.post(
   '/register',
+  authRateLimiter,
   validateBody(registerSchema),
   Container.authController.register
 );
@@ -24,10 +26,11 @@ authRouter.post(
 /**
  * @ruta POST /api/v1/auth/login
  * @descripcion Autentica las credenciales de un usuario y emite tokens de sesión
- * @acceso Público
+ * @acceso Público (Protegido con Rate Limiting: máx 5 intentos / 15 min por IP)
  */
 authRouter.post(
   '/login',
+  authRateLimiter,
   validateBody(loginSchema),
   Container.authController.login
 );
