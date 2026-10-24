@@ -9,6 +9,23 @@ import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use
 import { AuthController } from './presentation/controllers/auth.controller.js';
 import { createAuthMiddleware } from './presentation/middlewares/auth.middleware.js';
 
+// Importaciones Profile
+import { InMemoryProfileRepository } from './infrastructure/persistence/repositories/in-memory-profile.repository';
+import { LocalStorageService } from './infrastructure/storage/local-storage.service';
+import { UpdateProfileUseCase } from './application/use-cases/update-profile.use-case';
+import { UploadAvatarUseCase } from './application/use-cases/upload-avatar.use-case';
+
+// 1. Instancias la BD simulada
+const profileRepository = new InMemoryProfileRepository();
+const storageService = new LocalStorageService();
+
+// 2. Le pasas la BD simulada a tus casos de uso
+const updateProfileUseCase = new UpdateProfileUseCase(profileRepository);
+const uploadAvatarUseCase = new UploadAvatarUseCase(profileRepository, storageService);
+
+// 3. Ya puedes pasarle los casos de uso a tu controlador
+// const profileController = new ProfileController(updateProfileUseCase, uploadAvatarUseCase...);
+
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
  * Configura y enlaza todas las capas de la arquitectura limpia.

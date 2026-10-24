@@ -211,6 +211,90 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
+      '/api/v1/users/me/profile': {
+        get: {
+          tags: ['Profile'],
+          summary: 'Obtiene el perfil del usuario autenticado',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Perfil retornado exitosamente',
+            },
+          },
+        },
+        put: {
+          tags: ['Profile'],
+          summary: 'Actualiza o inicializa (Upsert) el perfil del usuario',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['first_name', 'last_name'],
+                  properties: {
+                    first_name: { type: 'string' },
+                    last_name: { type: 'string' },
+                    bio: { type: 'string' },
+                    phone: { type: 'string', example: '+524771234567' },
+                    skills: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Cambios guardados correctamente',
+            },
+            400: {
+              description: 'Error de formato en los datos ingresados',
+            },
+          },
+        },
+      },
+      '/api/v1/users/me/avatar': {
+        post: {
+          tags: ['Profile'],
+          summary: 'Carga o actualiza la imagen de perfil',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    avatar: {
+                      type: 'string',
+                      format: 'binary',
+                      description: 'Archivo JPG o PNG (Max 5MB)',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: {
+              description: 'Avatar actualizado correctamente',
+            },
+            400: {
+              description: 'Formato de imagen no permitido',
+            },
+          },
+        },
+      },
     },
   },
   apis: [],
