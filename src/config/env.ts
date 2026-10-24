@@ -15,6 +15,8 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET debe tener al menos 32 caracteres').default('freelancer_hub_super_secret_refresh_jwt_key_2026!#'),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_EXPIRATION_DAYS: z.string().default('7').transform((val) => parseInt(val, 10)),
+  GOOGLE_CLIENT_ID: z.string().optional().default('574293456066-eir8mo5bl9qh1uhmjctudhhel99cmd8i.apps.googleusercontent.com'),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

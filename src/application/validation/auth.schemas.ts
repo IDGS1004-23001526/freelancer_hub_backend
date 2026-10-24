@@ -71,3 +71,18 @@ export type RegisterRequestDto = z.infer<typeof registerSchema>;
 export type LoginRequestDto = z.infer<typeof loginSchema>;
 export type RefreshTokenRequestDto = z.infer<typeof refreshTokenSchema>;
 export type LogoutRequestDto = z.infer<typeof logoutSchema>;
+
+/**
+ * Esquema de validación para autenticación con Google ID Token.
+ */
+export const googleAuthSchema = z.object({
+  idToken: z
+    .string({ required_error: 'El idToken de Google es obligatorio' })
+    .min(10, 'El idToken de Google no es válido'),
+  role: z
+    .enum([UserRole.CLIENT, UserRole.FREELANCER, UserRole.ADMIN])
+    .optional()
+    .default(UserRole.FREELANCER),
+});
+
+export type GoogleAuthRequestDto = z.infer<typeof googleAuthSchema>;

@@ -4,6 +4,7 @@ import { validateBody } from '../middlewares/validate-request.middleware.js';
 import {
   registerSchema,
   loginSchema,
+  googleAuthSchema,
   refreshTokenSchema,
   logoutSchema,
 } from '../../application/validation/auth.schemas.js';
@@ -30,6 +31,17 @@ authRouter.post(
   '/login',
   validateBody(loginSchema),
   Container.authController.login
+);
+
+/**
+ * @ruta POST /api/v1/auth/google
+ * @descripcion Autentica un usuario mediante Google ID Token (Login o Registro federado)
+ * @acceso Público
+ */
+authRouter.post(
+  '/google',
+  validateBody(googleAuthSchema),
+  Container.authController.googleAuth
 );
 
 /**
