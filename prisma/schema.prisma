@@ -1,5 +1,7 @@
-// Esquema de Prisma para FreelancerHub
-// Documentación: https://pris.ly/d/prisma-schema
+// ============================================================================
+// FreelancerHub - Esquema de Base de Datos con Prisma ORM
+// Documentación oficial: https://pris.ly/d/prisma-schema
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +12,263 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Base de datos inicializada sin tablas ni modelos por ahora.
+// ----------------------------------------------------------------------------
+// ENUMS (Tipos Enumerados)
+// ----------------------------------------------------------------------------
+
+/// Proveedor de autenticación utilizado por el usuario
+enum AuthProvider {
+  LOCAL   // Registro tradicional con email y contraseña
+  GOOGLE  // Autenticación federada mediante Google OAuth2
+  APPLE   // Autenticación federada mediante Apple ID
+}
+
+/// Rol del usuario en la plataforma FreelancerHub
+enum UserRole {
+  CLIENT      // Cliente / Contratante que publica proyectos
+  FREELANCER  // Profesional independiente que ofrece servicios
+  ADMIN       // Administrador con permisos de gestión en la plataforma
+}
+
+// ----------------------------------------------------------------------------
+// MODELOS DE DATOS (Entidades / Tablas)
+// ----------------------------------------------------------------------------
+
+/// ============================================================================
+/// Modelo: User
+/// Tabla en BD: `users`
+/// Propósito: Entidad central de cuentas y credenciales de acceso.
+/// ============================================================================
+model User {
+  /// Identificador único universal (UUID v4)
+  id               String       @id @default(uuid()) @db.Uuid
+
+  /// Correo electrónico único del usuario (usado para login y notificaciones)
+  email            String       @unique @db.VarChar(255)
+
+  /// Hash seguro de contraseña (bcrypt/argon2). Nullable para logins OAuth puros
+  passwordHash     String?      @map("password_hash") @db.VarChar(255)
+
+  /// Proveedor de identidad que registró o autenticó al usuario
+  authProvider     AuthProvider @default(LOCAL) @map("auth_provider")
+
+  /// Identificador asignado por el proveedor OAuth (sub de Google/Apple)
+  authProviderId   String?      @unique @map("auth_provider_id") @db.VarChar(255)
+
+  /// Rol asignado dentro de la plataforma
+  role             UserRole     @default(FREELANCER)
+
+  /// Indica si el correo electrónico ha sido confirmado
+  isEmailVerified  Boolean      @default(false) @map("is_email_verified")
+
+  /// Estado de actividad de la cuenta (permite suspender o desactivar usuarios)
+  isActive         Boolean      @default(true) @map("is_active")
+
+  /// Fecha y hora de creación del registro
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha y hora de la última modificación del registro
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  /// Relación 1 a 1: Cada usuario tiene exactamente un perfil detallado
+  profile          Profile?
+
+  /// Relación 1 a N: Un usuario puede registrar múltiples métodos de pago
+  paymentMethods   PaymentMethod[]
+
+  @@map("users")
+}
+
+/// ============================================================================
+/// Modelo: Profile
+/// Tabla en BD: `profiles`
+/// Propósito: Información personal, profesional y biográfica del usuario.
+/// ============================================================================
+model Profile {
+  /// Identificador único del perfil
+  id          String   @id @default(uuid()) @db.Uuid
+
+  /// Clave foránea única vinculada a la tabla `users` (garantiza relación 1:1)
+  userId      String   @unique @map("user_id") @db.Uuid
+
+  /// Primer nombre o nombres de pila
+  firstName   String   @map("first_name") @db.VarChar(100)
+
+  /// Apellidos
+  lastName    String   @map("last_name") @db.VarChar(100)
+
+  /// Biografía o resumen profesional
+  bio         String?  @db.Text
+
+  /// Teléfono de contacto
+  phone       String?  @db.VarChar(25)
+
+  /// URL de la imagen de avatar o foto de perfil
+  avatarUrl   String?  @map("avatar_url") @db.VarChar(500)
+
+  /// Fecha y hora de creación del perfil
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha y hora de la última actualización
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  /// Usuario propietario del perfil (si se elimina el usuario, se elimina el perfil)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Relación 1 a N con tabla intermedia: Habilidades asociadas al perfil
+  skills      ProfileSkill[]
+
+  /// Relación 1 a N: Proyectos destacados del portafolio del perfil
+  portfolioItems PortfolioItem[]
+
+  @@map("profiles")
+}
+
+/// ============================================================================
+/// Modelo: PortfolioItem
+/// Tabla en BD: `portfolio_items`
+/// Propósito: Proyectos y trabajos destacados agregados al portafolio del freelancer.
+/// ============================================================================
+model PortfolioItem {
+  /// Identificador único del proyecto
+  id          String   @id @default(uuid()) @db.Uuid
+
+  /// Clave foránea vinculada al perfil dueño del proyecto
+  profileId   String   @map("profile_id") @db.Uuid
+
+  /// Título del proyecto
+  title       String   @db.VarChar(150)
+
+  /// Descripción del trabajo realizado y tecnologías
+  description String   @db.Text
+
+  /// Enlace web del proyecto (demo, repo, live)
+  projectUrl  String   @map("project_url") @db.VarChar(500)
+
+  /// Enlace a captura o imagen destacada del proyecto
+  imageUrl    String?  @map("image_url") @db.VarChar(500)
+
+  /// Fecha y hora de creación
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha y hora de la última modificación
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("portfolio_items")
+}
+
+/// ============================================================================
+/// Modelo: Skill
+/// Tabla en BD: `skills`
+/// Propósito: Catálogo global de habilidades técnicas y blandas disponibles.
+/// ============================================================================
+model Skill {
+  /// Identificador único de la habilidad
+  id          String   @id @default(uuid()) @db.Uuid
+
+  /// Nombre legible de la habilidad (ej. "React", "PostgreSQL", "Figma")
+  name        String   @unique @db.VarChar(100)
+
+  /// Identificador amigable para URLs y búsquedas (ej. "react", "postgresql")
+  slug        String   @unique @db.VarChar(100)
+
+  /// Categoría a la que pertenece (ej. "Desarrollo Web", "Diseño UI/UX", "DevOps")
+  category    String   @db.VarChar(100)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  /// Perfiles que poseen esta habilidad (a través de la tabla intermedia)
+  profiles    ProfileSkill[]
+
+  @@map("skills")
+}
+
+/// ============================================================================
+/// Modelo: ProfileSkill
+/// Tabla en BD: `profile_skills`
+/// Propósito: Tabla intermedia (Join Table) para la relación N:M entre Profile y Skill.
+/// ============================================================================
+model ProfileSkill {
+  /// Clave foránea al perfil
+  profileId   String   @map("profile_id") @db.Uuid
+
+  /// Clave foránea a la habilidad
+  skillId     String   @map("skill_id") @db.Uuid
+
+  /// Fecha y hora en la que el usuario agregó la habilidad a su perfil
+  addedAt     DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  /// Clave primaria compuesta por (profile_id, skill_id) que evita duplicados
+  @@id([profileId, skillId])
+  @@map("profile_skills")
+}
+
+/// ============================================================================
+/// Modelo: PaymentMethod
+/// Tabla en BD: `payment_methods`
+/// Propósito: Registro de métodos de pago (tarjetas/cuentas) tokenizados mediante pasarela.
+/// ============================================================================
+model PaymentMethod {
+  /// Identificador único del método de pago
+  id                String   @id @default(uuid()) @db.Uuid
+
+  /// Clave foránea del usuario dueño de este método de pago
+  userId            String   @map("user_id") @db.Uuid
+
+  /// ID del cliente en la pasarela de pagos (ej. Stripe: `cus_xxx`, Openpay, etc.)
+  gatewayCustomerId String   @map("gateway_customer_id") @db.VarChar(255)
+
+  /// Token o ID de la tarjeta en la pasarela (ej. `pm_xxx` o `card_xxx`). NUNCA se guardan números completos
+  gatewayToken      String   @map("gateway_token") @db.VarChar(255)
+
+  /// Marca o franquicia de la tarjeta (ej. "visa", "mastercard", "amex")
+  cardBrand         String   @map("card_brand") @db.VarChar(50)
+
+  /// Últimos 4 dígitos de la tarjeta para visualización del usuario
+  last4             String   @db.VarChar(4)
+
+  /// Mes de expiración de la tarjeta (1-12)
+  expMonth          Int      @map("exp_month")
+
+  /// Año de expiración de la tarjeta (ej. 2028)
+  expYear           Int      @map("exp_year")
+
+  /// Indica si es el método de pago preferido/predeterminado del usuario
+  isDefault         Boolean  @default(false) @map("is_default")
+
+  /// Fecha y hora en la que se vinculó el método de pago
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("payment_methods")
+}
