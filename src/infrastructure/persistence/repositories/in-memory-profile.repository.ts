@@ -1,5 +1,5 @@
-import { IProfileRepository } from '../../../domain/repositories/profile.repository.interface';
-import { Profile } from '../../../domain/entities/profile.entity';
+import { IProfileRepository } from '../../../domain/repositories/profile.repository.interface.js';
+import { Profile } from '../../../domain/entities/profile.entity.js';
 
 export class InMemoryProfileRepository implements IProfileRepository {
   // Este arreglo simula nuestra tabla en la base de datos
