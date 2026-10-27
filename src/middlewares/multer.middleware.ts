@@ -1,23 +1,26 @@
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
+import type { Request } from 'express';
 
 /**
  * Middleware de Multer para parsear las peticiones 'multipart/form-data'.
- * Utilizamos 'memoryStorage' porque no queremos que Multer guarde el archivo directamente.
- * Queremos mantenerlo en memoria RAM temporalmente para pasárselo a nuestro Caso de Uso
- * y que este decida (a través de IStorageService) dónde y cómo guardarlo definitivamente.
+ * Utilizamos 'memoryStorage' para procesar el Buffer en memoria RAM
+ * y delegar el guardado definitivo al caso de uso (IStorageService).
  */
 
 const storage = multer.memoryStorage();
 
-export const uploadMiddleware = multer({ 
+export const uploadMiddleware = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Límite estricto de 5MB por seguridad
-  fileFilter: (req, file, cb) => {
-    // Filtro de seguridad: Solo se aceptan tipos MIME específicos de imagen
+  limits: { fileSize: 5 * 1024 * 1024 }, // Límite de 5MB
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback
+  ) => {
     if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
       cb(null, true);
     } else {
       cb(new Error('Formato no permitido. Solo JPG y PNG.'));
     }
-  }
+  },
 });
