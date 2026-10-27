@@ -16,6 +16,6 @@ export class Phone {
       // Si falla la validación, lanzamos un error de dominio que detiene el flujo
       throw new Error("Formato de teléfono inválido");
     }
-    return new Telephone(value);
+    return new Phone(value);
   }
 }
