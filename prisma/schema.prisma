@@ -80,6 +80,8 @@ model User {
   /// Relación 1 a N: Un usuario puede registrar múltiples métodos de pago
   paymentMethods   PaymentMethod[]
 
+  projects         Project[]
+
   @@map("users")
 }
 
@@ -203,6 +205,8 @@ model Skill {
   /// Perfiles que poseen esta habilidad (a través de la tabla intermedia)
   profiles    ProfileSkill[]
 
+  projects    ProjectSkill[]
+
   @@map("skills")
 }
 
@@ -277,4 +281,36 @@ model PaymentMethod {
 
   @@index([userId])
   @@map("payment_methods")
+}
+
+enum ProjectStatus {
+  ACTIVE // Convocatoria activa
+  CLOSED
+}
+
+model Project {
+  id            String        @id @default(uuid()) @db.Uuid
+  clientId      String        @map("client_id") @db.Uuid
+  title         String        @db.VarChar(150)
+  description   String        @db.Text
+  budget        Decimal       @db.Decimal(12, 2)
+  estimatedDate DateTime      @map("estimated_date") @db.Timestamptz(6)
+  status        ProjectStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  skills        ProjectSkill[]
+
+  @@index([clientId])
+  @@map("projects")
+}
+
+model ProjectSkill {
+  projectId String   @map("project_id") @db.Uuid
+  skillId   String   @map("skill_id") @db.Uuid
+  addedAt   DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  @@id([projectId, skillId])
+  @@map("project_skills")
 }

@@ -70,3 +70,68 @@ export class InvalidTokenException extends DomainException {
     super(mensaje);
   }
 }
+
+/**
+ * 
+ * MODULE ======> PROJECTS
+ * 
+ * Exepcion del titulo de la convocatoria demasiada corta 
+ */
+export class InvalidProjectTitleException extends DomainException {
+  public readonly statusCode = 400;
+
+  constructor(min = 10) {
+    super(`El título de la convocatoria debe tener al menos ${min} caracteres.`);
+  }
+}
+
+/**
+ * Excepcion => Descripción de convocatoria demasiado corta
+ */
+
+export class InvalidProjectDescriptionException extends DomainException {
+  public readonly statusCode = 400;
+
+  constructor(min = 30) {
+    super(`La descripción de la convocatoria debe tener al menos ${min} caracteres.`);
+  }
+}
+
+/**
+ * Excepción => Presupuesto no válido (válido mayor que 0)
+ */
+export class InvalidBudgetException extends DomainException {
+  public readonly statusCode = 400;
+
+  constructor() {
+    super(`El presupuesto debe ser estrictamente mayor que 0`);
+  }
+}
+
+/** 
+ * Exception => Menos tags de habilidades que el mínimo requerido. 
+*/
+export class InsufficientSkillTagsException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(min = 3) {
+    super(`La convocatoria requiere al menos ${min} tags de habilidades distintos.`);
+  }
+}
+/** 
+ * Exception => Fecha estimada de entrega no posterior a la fecha actual. 
+*/
+export class InvalidEstimatedDateException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('La fecha estimada debe ser posterior a la fecha actual.');
+  }
+}
+/**
+ * Exception => El usuario autenticado no tiene rol para publicar convocatorias.
+ */
+export class ProjectCreationNotAllowedException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('Solo los usuarios con rol CLIENT pueden publicar convocatorias.');
+  }
+}
