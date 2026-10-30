@@ -19,6 +19,10 @@ import { UploadAvatarUseCase } from './application/use-cases/upload-avatar.use-c
 import { AuthController } from './presentation/controllers/auth.controller.js';
 import { createAuthMiddleware } from './presentation/middlewares/auth.middleware.js';
 
+import { PrismaProjectRepository } from './infrastructure/persistence/repositories/prisma-proyect.repository.js';
+import { CreateProjectUseCase } from './application/use-cases/create-project.use-case.js';
+import { ProjectController } from './presentation/controllers/project.controller.js';
+
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
  * Configura y enlaza todas las capas de la arquitectura limpia.
@@ -31,6 +35,7 @@ export class Container {
   public static readonly refreshTokenRepository = new InMemoryRefreshTokenRepository();
   public static readonly profileRepository = new PrismaProfileRepository(prisma);
   public static readonly storageService = new LocalStorageService();
+  public static readonly projectRepository = new PrismaProjectRepository(prisma);
 
   // Capa de Aplicación - Casos de Uso (Auth)
   public static readonly registerUserUseCase = new RegisterUserUseCase(
@@ -72,6 +77,10 @@ export class Container {
     Container.storageService
   );
 
+  public static readonly createProjectUseCase = new CreateProjectUseCase(
+    Container.projectRepository
+  );
+
   // Capa de Presentación
   public static readonly authController = new AuthController(
     Container.registerUserUseCase,
@@ -83,5 +92,9 @@ export class Container {
 
   public static readonly authMiddleware = createAuthMiddleware(
     Container.jwtTokenGenerator
+  );
+
+  public static readonly projectController = new ProjectController(
+    Container.createProjectUseCase
   );
 }
