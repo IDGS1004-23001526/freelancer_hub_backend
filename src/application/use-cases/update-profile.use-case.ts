@@ -14,10 +14,19 @@ export class UpdateProfileUseCase {
     let profile = await this.profileRepository.findByUserId(userId);
 
     // 2. Instanciamos los Value Objects y Entidades a partir de los datos crudos (DTO).
-    const phone = data.phone ? Phone.create(data.phone) : undefined;
+    let phone: Phone | undefined;
+    if (data.phone) {
+      try {
+        const sanitizedPhone = typeof data.phone === 'string' ? data.phone.replace(/[^\d+]/g, '') : String(data.phone);
+        phone = Phone.create(sanitizedPhone);
+      } catch {
+        phone = undefined;
+      }
+    }
     const skills = data.skills?.map((s: any) => new Skill(s.id, s.name));
     const firstName = data.firstName ?? data.first_name ?? '';
     const lastName = data.lastName ?? data.last_name ?? '';
+    const hourlyRate = data.hourlyRate !== undefined && data.hourlyRate !== null ? Number(data.hourlyRate) : undefined;
 
     if (!profile) {
       // 3a. Flujo de Creación (Insert): Instanciamos un nuevo perfil
@@ -29,7 +38,7 @@ export class UpdateProfileUseCase {
         phone,
         data.avatarUrl,
         data.professionalTitle,
-        data.hourlyRate,
+        hourlyRate,
         skills ?? []
       );
     } else {
@@ -40,7 +49,7 @@ export class UpdateProfileUseCase {
         bio: data.bio,
         phone,
         professionalTitle: data.professionalTitle,
-        hourlyRate: data.hourlyRate,
+        hourlyRate,
       });
 
       if (skills !== undefined) {

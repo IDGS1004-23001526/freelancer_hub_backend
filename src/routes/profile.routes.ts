@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Router, Request, Response } from 'express';
 import { Profile } from '../domain/entities/profile.entity.js';
 import { Container } from '../container.js';
+import { uploadMiddleware } from '../middlewares/multer.middleware.js';
 
 export const profileRouter = Router();
 const profileRepository = Container.profileRepository;
@@ -15,7 +16,9 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
   let profile = await profileRepository.findByUserId(userId);
 
   if (!profile) {
-    profile = new Profile(userId, '', '');
+    const user = await Container.userRepository.findById(userId);
+    const parts = user ? user.fullName.trim().split(/\s+/) : ['Usuario'];
+    profile = new Profile(userId, parts[0] || 'Usuario', parts.slice(1).join(' ') || '');
   }
 
   const step1 = Boolean(
@@ -37,18 +40,52 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
       completedSteps: completed,
       percentage: Math.round((completed / 3) * 100),
       isFullyCompleted: completed === 3,
+      steps: [
+        { id: 'professional_info', isCompleted: step1 },
+        { id: 'portfolio', isCompleted: step2 },
+        { id: 'skills', isCompleted: step3 },
+      ],
     },
   });
 });
 
-// 2. Obtener perfil completo
+// 2. Obtener perfil completo del usuario autenticado
 profileRouter.get('/me', async (req: Request, res: Response) => {
   const userId = req.user?.sub || 'default';
-  const profile = await profileRepository.findByUserId(userId);
+  let profile = await profileRepository.findByUserId(userId);
+
+  if (!profile) {
+    const user = await Container.userRepository.findById(userId);
+    if (user) {
+      const parts = user.fullName.trim().split(/\s+/);
+      const firstName = parts[0] || 'Usuario';
+      const lastName = parts.slice(1).join(' ') || '';
+      profile = new Profile(userId, firstName, lastName);
+    }
+  }
+
+  if (!profile) {
+    return res.json({
+      success: true,
+      statusCode: 200,
+      data: null,
+    });
+  }
+
+  const cleanSkills = (profile.skills || []).map((s: any) =>
+    typeof s === 'string' ? s : s?.name || ''
+  ).filter(Boolean);
+
   res.json({
     success: true,
     statusCode: 200,
-    data: profile || null,
+    data: {
+      ...profile,
+      first_name: profile.firstName,
+      lastName: profile.lastName,
+      last_name: profile.lastName,
+      skills: cleanSkills,
+    },
   });
 });
 
@@ -57,13 +94,16 @@ profileRouter.put('/professional-info', async (req: Request, res: Response) => {
   const userId = req.user?.sub || 'default';
   let profile = await profileRepository.findByUserId(userId);
 
+  const firstName = req.body.firstName || req.body.first_name || '';
+  const lastName = req.body.lastName || req.body.last_name || '';
+
   if (!profile) {
-    profile = new Profile(userId, req.body.first_name, req.body.last_name);
+    profile = new Profile(userId, firstName, lastName);
   }
 
   profile.updateDetails({
-    firstName: req.body.first_name,
-    lastName: req.body.last_name,
+    firstName,
+    lastName,
     bio: req.body.bio,
     phone: req.body.phone,
     professionalTitle: req.body.professionalTitle,
@@ -71,7 +111,15 @@ profileRouter.put('/professional-info', async (req: Request, res: Response) => {
   });
 
   await profileRepository.save(profile);
-  res.json({ success: true, statusCode: 200, data: profile });
+  res.json({
+    success: true,
+    statusCode: 200,
+    data: {
+      ...profile,
+      first_name: profile.firstName,
+      last_name: profile.lastName,
+    },
+  });
 });
 
 // 4. Agregar ítem al portafolio (Paso 2)
@@ -121,5 +169,52 @@ profileRouter.put('/skills', async (req: Request, res: Response) => {
 
   profile.setSkills(req.body.skills || []);
   await profileRepository.save(profile);
+  res.json({ success: true, statusCode: 200, data: profile });
+});
+
+// 7. Subir Avatar / Foto de perfil
+profileRouter.post(
+  '/avatar',
+  uploadMiddleware.single('avatar'),
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.sub;
+      if (!userId) {
+        return res.status(401).json({ success: false, statusCode: 401, message: 'Usuario no autenticado' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, statusCode: 400, message: 'No se envió ningún archivo' });
+      }
+
+      const avatarUrl = await Container.uploadAvatarUseCase.execute(
+        userId,
+        req.file.buffer,
+        req.file.originalname
+      );
+
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Avatar actualizado exitosamente.',
+        data: { avatarUrl },
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        statusCode: 500,
+        message: error.message || 'Error al subir el avatar.',
+      });
+    }
+  }
+);
+
+// 8. Obtener perfil público de un usuario por su ID
+profileRouter.get('/:userId', async (req: Request, res: Response) => {
+  const userId = String(req.params.userId);
+  const profile = await profileRepository.findByUserId(userId);
+  if (!profile) {
+    return res.status(404).json({ success: false, statusCode: 404, message: 'Perfil no encontrado' });
+  }
   res.json({ success: true, statusCode: 200, data: profile });
 });

@@ -4,7 +4,7 @@ import { IStorageService } from '../../application/interfaces/storage-service.in
 
 /**
  * Implementación concreta del servicio de almacenamiento en disco local.
- * Compatible con Node.js ESM nativo.
+ * Compatible con Node.js 
  */
 export class LocalStorageService implements IStorageService {
   async upload(file: Buffer, filename: string): Promise<string> {
