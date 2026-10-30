@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { RegisterUserUseCase } from '../../application/use-cases/register-user.use-case.js';
 import { AuthenticateUserUseCase } from '../../application/use-cases/authenticate-user.use-case.js';
+import { GoogleAuthUseCase } from '../../application/use-cases/google-auth.use-case.js';
 import { RefreshSessionTokenUseCase } from '../../application/use-cases/refresh-session-token.use-case.js';
 import { RevokeSessionUseCase } from '../../application/use-cases/revoke-session.use-case.js';
 import { IUserRepository } from '../../domain/repositories/user.repository.interface.js';
@@ -14,6 +15,7 @@ export class AuthController {
   constructor(
     private readonly registerUserUseCase: RegisterUserUseCase,
     private readonly authenticateUserUseCase: AuthenticateUserUseCase,
+    private readonly googleAuthUseCase: GoogleAuthUseCase,
     private readonly refreshSessionTokenUseCase: RefreshSessionTokenUseCase,
     private readonly revokeSessionUseCase: RevokeSessionUseCase,
     private readonly userRepository: IUserRepository
@@ -46,6 +48,23 @@ export class AuthController {
         success: true,
         statusCode: 200,
         message: 'Autenticación exitosa.',
+        data: resultado,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Autenticación con cuenta de Google (Login y Registro federado).
+   */
+  public googleAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const resultado = await this.googleAuthUseCase.execute(req.body);
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Autenticación con Google exitosa.',
         data: resultado,
       });
     } catch (error) {

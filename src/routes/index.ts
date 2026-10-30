@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { healthRouter } from './health.route.js';
 import { authRouter } from '../presentation/routes/auth.routes.js';
-import { profileRouter } from './profile.routes.js';
+import { profileRouter } from '../presentation/routes/profile.routes.js';
 import { usersRouter } from './user.routes.js';
 import { skillsRouter } from './skills.routes.js';
 
@@ -13,7 +13,7 @@ apiRouter.use('/health', healthRouter);
 // Rutas de la API v1 (Módulo de Autenticación y Usuarios)
 apiRouter.use('/v1/auth', authRouter);
 
-// Rutas de la API v1 (Módulo de Perfil)
+// Rutas de la API v1 (Módulo de Perfiles y Onboarding)
 apiRouter.use('/v1/profile', profileRouter);
 
 // Rutas de la API v1 (Módulo de Usuarios - Swagger Spec)

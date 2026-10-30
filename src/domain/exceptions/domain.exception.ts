@@ -70,3 +70,13 @@ export class InvalidTokenException extends DomainException {
     super(mensaje);
   }
 }
+
+/**
+ * Excepción lanzada cuando no se encuentra un recurso específico (404).
+ */
+export class ResourceNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(mensaje = 'El recurso solicitado no fue encontrado.') {
+    super(mensaje);
+  }
+}

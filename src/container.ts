@@ -10,13 +10,20 @@ import { LocalStorageService } from './infrastructure/storage/local-storage.serv
 
 import { RegisterUserUseCase } from './application/use-cases/register-user.use-case.js';
 import { AuthenticateUserUseCase } from './application/use-cases/authenticate-user.use-case.js';
+import { GoogleAuthUseCase } from './application/use-cases/google-auth.use-case.js';
 import { RefreshSessionTokenUseCase } from './application/use-cases/refresh-session-token.use-case.js';
 import { RevokeSessionUseCase } from './application/use-cases/revoke-session.use-case.js';
 import { GetProfileUseCase } from './application/use-cases/get-profile.use-case.js';
 import { UpdateProfileUseCase } from './application/use-cases/update-profile.use-case.js';
 import { UploadAvatarUseCase } from './application/use-cases/upload-avatar.use-case.js';
 
+import { GetOnboardingStatusUseCase } from './application/use-cases/get-onboarding-status.use-case.js';
+import { UpdateProfessionalInfoUseCase } from './application/use-cases/update-professional-info.use-case.js';
+import { UpdateSkillsUseCase } from './application/use-cases/update-skills.use-case.js';
+import { AddPortfolioItemUseCase } from './application/use-cases/add-portfolio-item.use-case.js';
+import { DeletePortfolioItemUseCase } from './application/use-cases/delete-portfolio-item.use-case.js';
 import { AuthController } from './presentation/controllers/auth.controller.js';
+import { ProfileController } from './presentation/controllers/profile.controller.js';
 import { createAuthMiddleware } from './presentation/middlewares/auth.middleware.js';
 
 /**
@@ -47,6 +54,12 @@ export class Container {
     Container.jwtTokenGenerator
   );
 
+  public static readonly googleAuthUseCase = new GoogleAuthUseCase(
+    Container.userRepository,
+    Container.refreshTokenRepository,
+    Container.jwtTokenGenerator
+  );
+
   public static readonly refreshSessionTokenUseCase = new RefreshSessionTokenUseCase(
     Container.userRepository,
     Container.refreshTokenRepository,
@@ -58,9 +71,20 @@ export class Container {
     Container.jwtTokenGenerator
   );
 
-  // Capa de Aplicación - Casos de Uso (Profile)
-  public static readonly getProfileUseCase = new GetProfileUseCase(
-    Container.profileRepository
+  // Capa de Aplicación - Casos de Uso (Profile / Onboarding)
+  public static readonly getOnboardingStatusUseCase = new GetOnboardingStatusUseCase();
+  public static readonly getProfileUseCase = new GetProfileUseCase(Container.userRepository);
+  public static readonly updateProfessionalInfoUseCase = new UpdateProfessionalInfoUseCase(
+    Container.userRepository
+  );
+  public static readonly updateSkillsUseCase = new UpdateSkillsUseCase(
+    Container.userRepository
+  );
+  public static readonly addPortfolioItemUseCase = new AddPortfolioItemUseCase(
+    Container.userRepository
+  );
+  public static readonly deletePortfolioItemUseCase = new DeletePortfolioItemUseCase(
+    Container.userRepository
   );
 
   public static readonly updateProfileUseCase = new UpdateProfileUseCase(
@@ -76,9 +100,19 @@ export class Container {
   public static readonly authController = new AuthController(
     Container.registerUserUseCase,
     Container.authenticateUserUseCase,
+    Container.googleAuthUseCase,
     Container.refreshSessionTokenUseCase,
     Container.revokeSessionUseCase,
     Container.userRepository
+  );
+
+  public static readonly profileController = new ProfileController(
+    Container.getOnboardingStatusUseCase,
+    Container.getProfileUseCase,
+    Container.updateProfessionalInfoUseCase,
+    Container.updateSkillsUseCase,
+    Container.addPortfolioItemUseCase,
+    Container.deletePortfolioItemUseCase
   );
 
   public static readonly authMiddleware = createAuthMiddleware(
