@@ -143,4 +143,12 @@ export class Project {
     public get updatedAt(): Date {
         return this._updatedAt;
     }
+
 }
+
+export const sanitizeXss = (input: string): string => {
+    return input
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Elimina bloques <script>
+        .replace(/<\/?[^>]+(>|$)/g, '') // Elimina cualquier etiqueta HTML restante (<img...>, <b>, etc.)
+        .trim()
+};

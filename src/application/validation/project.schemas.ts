@@ -1,16 +1,23 @@
 import { z } from 'zod';
+import { sanitizeXss } from '../../domain/entities/project.entity.js';
 
 export const createProjectSchema = z.object({
     title: z
         .string({ required_error: 'El título es obligatorio' })
-        .trim()
-        .min(10, 'El título debe tener al menos 10 caracteres')
-        .max(150, 'El título no puede superar los 150 caracteres'),
+        .transform(sanitizeXss)
+        .pipe(
+            z.string()
+                .min(10, 'El titulo debe tener al menos 10 caracteres')
+                .max(150, 'El título no puede superar los 150 caracteres')
+        ),
     description: z
         .string({ required_error: 'La descripción es obligatoria' })
-        .trim()
-        .min(30, 'La descripción debe tener al menos 30 caracteres')
-        .max(5000, 'La descripción no puede superar los 5000 caracteres'),
+        .transform(sanitizeXss)
+        .pipe(
+            z.string()
+                .min(30, 'La descripción debe tener al menos 30 caracteres')
+                .max(5000, 'La descripción no puede superar los 5000 caracteres')
+        ),
     budget: z
         .number({ required_error: 'El presupuesto es obligatorio', invalid_type_error: 'El presupuesto debe ser numérico' })
         .positive('El presupuesto debe ser mayor a 0')
