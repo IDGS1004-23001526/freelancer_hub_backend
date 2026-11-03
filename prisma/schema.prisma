@@ -110,6 +110,12 @@ model Profile {
   /// URL de la imagen de avatar o foto de perfil
   avatarUrl   String?  @map("avatar_url") @db.VarChar(500)
 
+  /// Título profesional o especialidad (ej. Full Stack Developer)
+  professionalTitle String? @map("professional_title") @db.VarChar(150)
+
+  /// Tarifa por hora en USD
+  hourlyRate        Float?  @map("hourly_rate")
+
   /// Fecha y hora de creación del perfil
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
