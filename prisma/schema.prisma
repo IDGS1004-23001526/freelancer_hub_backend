@@ -278,3 +278,79 @@ model PaymentMethod {
   @@index([userId])
   @@map("payment_methods")
 }
+
+// ----------------------------------------------------------------------------
+// MODULO INTERNO DE GESTION DE TAREAS (MINI-JIRA EQUIPO)
+// Completamente aislado del flujo y logica de produccion
+// ----------------------------------------------------------------------------
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// ============================================================================
+/// Modelo: InternalTask
+/// Tabla en BD: `internal_tasks`
+/// Propósito: Tablero Kanban interno para asignación de tareas del equipo dev.
+/// ============================================================================
+model InternalTask {
+  /// Identificador único de la tarea
+  id          String       @id @default(uuid()) @db.Uuid
+
+  /// Título conciso de la tarea
+  title       String       @db.VarChar(200)
+
+  /// Descripción o requerimientos de la tarea
+  description String?      @db.Text
+
+  /// Estado en el tablero Kanban
+  status      TaskStatus   @default(TODO)
+
+  /// Prioridad de la tarea
+  priority    TaskPriority @default(MEDIUM)
+
+  /// Miembro asignado (Paulo, Diego, Karla, Christian, Axel, Uriel)
+  assignee    String       @db.VarChar(50)
+
+  /// Creador / Administrador que asignó la tarea
+  createdBy   String       @default("Paulo") @map("created_by") @db.VarChar(50)
+
+  /// Fecha límite opcional de entrega
+  dueDate     DateTime?    @map("due_date") @db.Timestamptz(6)
+
+  /// Fecha de creación
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha de última actualización
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([assignee])
+  @@index([status])
+  @@map("internal_tasks")
+}
+
+/// ============================================================================
+/// Modelo: InternalMember
+/// Tabla en BD: `internal_members`
+/// Propósito: Credenciales auto-gestionadas por los devs del equipo (Diego, Karla, etc.)
+/// ============================================================================
+model InternalMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(100)
+  role      String   @default("DEV") @db.VarChar(20) // ADMIN o DEV
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("internal_members")
+}
