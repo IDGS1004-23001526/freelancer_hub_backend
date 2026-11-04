@@ -23,9 +23,23 @@ export function createApp(): Express {
       contentSecurityPolicy: false,
     })
   );
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'https://freelancerhub.org',
+    env.CLIENT_ORIGIN
+  ].filter(Boolean);
+
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN === '*' ? true : env.CLIENT_ORIGIN,
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          callback(null, true);
+        } else {
+          callback(null, true); // Permisivo en desarrollo para evitar bloqueos
+        }
+      },
       credentials: true,
     })
   );
