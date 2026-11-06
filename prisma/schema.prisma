@@ -379,6 +379,10 @@ model Project {
   skills        ProjectSkill[]
 
   @@index([clientId])
+  @@index([status])
+  @@index([budget])
+  @@index([createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
   @@map("projects")
 }
 
@@ -388,7 +392,9 @@ model ProjectSkill {
   addedAt   DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  @@id([projectId, skillId])
-  @@map("project_skills")
 
+  @@id([projectId, skillId])
+  @@index([skillId])
+  @@index([projectId])
+  @@map("project_skills")
 }
