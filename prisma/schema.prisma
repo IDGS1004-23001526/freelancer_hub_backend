@@ -80,6 +80,10 @@ model User {
   /// Relación 1 a N: Un usuario puede registrar múltiples métodos de pago
   paymentMethods   PaymentMethod[]
 
+  projects         Project[]
+
+  proposals        Proposal[]
+
   @@map("users")
 }
 
@@ -203,6 +207,8 @@ model Skill {
   /// Perfiles que poseen esta habilidad (a través de la tabla intermedia)
   profiles    ProfileSkill[]
 
+  projects    ProjectSkill[]
+
   @@map("skills")
 }
 
@@ -277,4 +283,222 @@ model PaymentMethod {
 
   @@index([userId])
   @@map("payment_methods")
+}
+
+
+// ----------------------------------------------------------------------------
+// MODULO INTERNO DE GESTION DE TAREAS (MINI-JIRA EQUIPO)
+// Completamente aislado del flujo y logica de produccion
+// ----------------------------------------------------------------------------
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// ============================================================================
+/// Modelo: InternalTask
+/// Tabla en BD: `internal_tasks`
+/// Propósito: Tablero Kanban interno para asignación de tareas del equipo dev.
+/// ============================================================================
+model InternalTask {
+  /// Identificador único de la tarea
+  id          String       @id @default(uuid()) @db.Uuid
+
+  /// Título conciso de la tarea
+  title       String       @db.VarChar(200)
+
+  /// Descripción o requerimientos de la tarea
+  description String?      @db.Text
+
+  /// Estado en el tablero Kanban
+  status      TaskStatus   @default(TODO)
+
+  /// Prioridad de la tarea
+  priority    TaskPriority @default(MEDIUM)
+
+  /// Miembro asignado (Paulo, Diego, Karla, Christian, Axel, Uriel)
+  assignee    String       @db.VarChar(50)
+
+  /// Creador / Administrador que asignó la tarea
+  createdBy   String       @default("Paulo") @map("created_by") @db.VarChar(50)
+
+  /// Fecha límite opcional de entrega
+  dueDate     DateTime?    @map("due_date") @db.Timestamptz(6)
+
+  /// Fecha de creación
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha de última actualización
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([assignee])
+  @@index([status])
+  @@map("internal_tasks")
+}
+
+/// ============================================================================
+/// Modelo: InternalMember
+/// Tabla en BD: `internal_members`
+/// Propósito: Credenciales auto-gestionadas por los devs del equipo (Diego, Karla, etc.)
+/// ============================================================================
+model InternalMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(100)
+  role      String   @default("DEV") @db.VarChar(20) // ADMIN o DEV
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("internal_members")
+}
+
+enum ProjectStatus {
+  ACTIVE // Convocatoria activa
+  CLOSED
+}
+
+model Project {
+  id            String        @id @default(uuid()) @db.Uuid
+  clientId      String        @map("client_id") @db.Uuid
+  title         String        @db.VarChar(150)
+  description   String        @db.Text
+  budget        Decimal       @db.Decimal(12, 2)
+  estimatedDate DateTime      @map("estimated_date") @db.Timestamptz(6)
+  status        ProjectStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  skills        ProjectSkill[]
+  proposals     Proposal[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([budget])
+  @@index([createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("projects")
+}
+
+model ProjectSkill {
+  projectId String   @map("project_id") @db.Uuid
+  skillId   String   @map("skill_id") @db.Uuid
+  addedAt   DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, skillId])
+  @@index([skillId])
+  @@index([projectId])
+  @@map("project_skills")
+}
+
+// ----------------------------------------------------------------------------
+// MODULO DE PROPUESTAS, COTIZACIONES E HITOS (HU-03 / HU-04)
+// ----------------------------------------------------------------------------
+
+enum ProposalStatus {
+  PENDING   // Propuesta en espera de revisión por el cliente
+  ACCEPTED  // Propuesta aprobada por el cliente para formalizar contrato
+  REJECTED  // Propuesta declinada
+}
+
+/// ============================================================================
+/// Modelo: Proposal
+/// Tabla en BD: `proposals`
+/// Propósito: Ofertas económicas enviadas por freelancers para una convocatoria.
+/// ============================================================================
+model Proposal {
+  /// Identificador único de la propuesta
+  id            String         @id @default(uuid()) @db.Uuid
+
+  /// Convocatoria a la que se postula
+  projectId     String         @map("project_id") @db.Uuid
+
+  /// Freelancer que presenta la propuesta
+  freelancerId  String         @map("freelancer_id") @db.Uuid
+
+  /// Carta de presentación o justificación técnica
+  coverLetter   String         @map("cover_letter") @db.Text
+
+  /// Monto total cotizado (suma de hitos)
+  totalPrice    Decimal        @map("total_price") @db.Decimal(12, 2)
+
+  /// Tiempo total estimado de entrega en días naturales
+  estimatedDays Int            @map("estimated_days")
+
+  /// Estado de la propuesta
+  status        ProposalStatus @default(PENDING)
+
+  /// Fecha de registro de la postulación
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Fecha de última actualización de la postulación
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  freelancer    User           @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  milestones    MilestoneQuote[]
+
+  /// Regla anti-abuso a nivel de persistencia: un freelancer solo puede tener 1 propuesta por proyecto
+  @@unique([projectId, freelancerId], name: "unique_project_freelancer_proposal")
+  @@index([projectId])
+  @@index([freelancerId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("proposals")
+}
+
+/// ============================================================================
+/// Modelo: MilestoneQuote
+/// Tabla en BD: `milestone_quotes`
+/// Propósito: Desglose de hitos cotizados dentro de una propuesta económica.
+/// ============================================================================
+model MilestoneQuote {
+  /// Identificador único del hito cotizado
+  id           String    @id @default(uuid()) @db.Uuid
+
+  /// Propuesta a la que pertenece el hito
+  proposalId   String    @map("proposal_id") @db.Uuid
+
+  /// Nombre conciso del entregable / hito
+  title        String    @db.VarChar(150)
+
+  /// Detalle o criterios de aceptación del entregable
+  description  String?   @db.Text
+
+  /// Monto económico asignado a este hito específico
+  amount       Decimal   @db.Decimal(12, 2)
+
+  /// Días estimados para completar este hito
+  deliveryDays Int       @map("delivery_days")
+
+  /// Orden secuencial del hito en el plan de trabajo (1, 2, 3...)
+  order        Int       @default(1)
+
+  /// Fecha de registro del hito
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // --------------------------------------------------------------------------
+  // RELACIONES
+  // --------------------------------------------------------------------------
+
+  proposal     Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([proposalId, order])
+  @@map("milestone_quotes")
 }

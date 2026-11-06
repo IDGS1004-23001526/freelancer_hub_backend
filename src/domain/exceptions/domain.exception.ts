@@ -72,11 +72,99 @@ export class InvalidTokenException extends DomainException {
 }
 
 /**
- * Excepción lanzada cuando no se encuentra un recurso específico (404).
- */
 export class ResourceNotFoundException extends DomainException {
   public readonly statusCode = 404;
   constructor(mensaje = 'El recurso solicitado no fue encontrado.') {
     super(mensaje);
+  }
+}
+
+/**
+ * MODULE ======> PROJECTS
+ */
+export class InvalidProjectTitleException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(min = 10) {
+    super(`El título de la convocatoria debe tener al menos ${min} caracteres.`);
+  }
+}
+
+export class InvalidProjectDescriptionException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(min = 30) {
+    super(`La descripción de la convocatoria debe tener al menos ${min} caracteres.`);
+  }
+}
+
+export class InvalidBudgetException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('El presupuesto debe ser estrictamente mayor que 0');
+  }
+}
+
+export class InsufficientSkillTagsException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(min = 3) {
+    super(`La convocatoria requiere al menos ${min} tags de habilidades distintos.`);
+  }
+}
+
+export class InvalidEstimatedDateException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('La fecha estimada debe ser posterior a la fecha actual.');
+  }
+}
+
+export class ProjectCreationNotAllowedException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('Solo los usuarios con rol CLIENT pueden publicar convocatorias.');
+  }
+}
+
+/**
+ * MODULE ======> PROPOSALS & MILESTONES (HU-03 / HU-04)
+ */
+export class ProjectNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(projectId: string) {
+    super(`La convocatoria con id "${projectId}" no existe o ya no está disponible.`);
+  }
+}
+
+export class ProposalAlreadySubmittedException extends DomainException {
+  public readonly statusCode = 409;
+  constructor() {
+    super('Ya has postulado una propuesta para esta convocatoria. No se permiten propuestas duplicadas.');
+  }
+}
+
+export class ProposalExceedsProjectBudgetException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(totalPrice: number, maxBudget: number) {
+    super(`El monto total de la propuesta ($${totalPrice.toFixed(2)}) excede el presupuesto máximo del proyecto ($${maxBudget.toFixed(2)}).`);
+  }
+}
+
+export class ProposalMilestonesMismatchException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('La suma del monto de los hitos debe ser igual al precio total de la propuesta.');
+  }
+}
+
+export class FreelancerRoleRequiredException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('Solo los usuarios con rol FREELANCER pueden postular propuestas a proyectos.');
+  }
+}
+
+export class ProjectNotActiveException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('No se pueden enviar propuestas a una convocatoria que no se encuentra activa.');
   }
 }

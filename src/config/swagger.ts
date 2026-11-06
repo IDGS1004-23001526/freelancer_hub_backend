@@ -295,6 +295,37 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
+      '/api/v1/projects': {
+        post: {
+          tags: ['Projects'],
+          summary: 'Crea una convocatoria',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['title', 'description', 'budget', 'skills', 'estimatedDate'],
+                  properties: {
+                    title: { type: 'string', minLength: 10, example: 'E-commerce móvil con pasarela de pagos' },
+                    description: { type: 'string', minLength: 30, example: 'App móvil en Flutter con pagos y panel administrativo.' },
+                    budget: { type: 'number', exclusiveMinimum: 0, example: 2400 },
+                    skills: { type: 'array', minItems: 3, items: { type: 'string' }, example: ['Flutter', '.NET Core', 'SQL Server'] },
+                    estimatedDate: { type: 'string', format: 'date-time', example: '2027-01-15T00:00:00Z' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Convocatoria creada' },
+            400: { description: 'Validación fallida' },
+            401: { description: 'No autenticado' },
+            403: { description: 'Rol no autorizado' },
+          },
+        },
+      },
     },
   },
   apis: [],
