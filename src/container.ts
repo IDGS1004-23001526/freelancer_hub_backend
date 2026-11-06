@@ -25,6 +25,10 @@ import { PrismaProjectRepository } from './infrastructure/persistence/repositori
 import { CreateProjectUseCase } from './application/use-cases/create-project.use-case.js';
 import { ProjectController } from './presentation/controllers/project.controller.js';
 
+import { PrismaProposalRepository } from './infrastructure/persistence/repositories/prisma-proposal.repository.js';
+import { SubmitProposalUseCase } from './application/use-cases/submit-proposal.use-case.js';
+import { ProposalController } from './presentation/controllers/proposal.controller.js';
+
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
  * Configura y enlaza todas las capas de la arquitectura limpia.
@@ -38,6 +42,7 @@ export class Container {
   public static readonly profileRepository = new PrismaProfileRepository(prisma);
   public static readonly storageService = new LocalStorageService();
   public static readonly projectRepository = new PrismaProjectRepository(prisma);
+  public static readonly proposalRepository = new PrismaProposalRepository(prisma);
 
   // Capa de Aplicación - Casos de Uso (Auth)
   public static readonly registerUserUseCase = new RegisterUserUseCase(
@@ -89,6 +94,10 @@ export class Container {
     Container.projectRepository
   );
 
+  public static readonly submitProposalUseCase = new SubmitProposalUseCase(
+    Container.proposalRepository
+  );
+
   // Capa de Presentación
   public static readonly authController = new AuthController(
     Container.registerUserUseCase,
@@ -105,5 +114,10 @@ export class Container {
 
   public static readonly projectController = new ProjectController(
     Container.createProjectUseCase
+  );
+
+  public static readonly proposalController = new ProposalController(
+    Container.submitProposalUseCase,
+    Container.proposalRepository
   );
 }

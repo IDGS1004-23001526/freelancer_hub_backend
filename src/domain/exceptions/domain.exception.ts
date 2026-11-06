@@ -121,5 +121,50 @@ export class ProjectCreationNotAllowedException extends DomainException {
   public readonly statusCode = 403;
   constructor() {
     super('Solo los usuarios con rol CLIENT pueden publicar convocatorias.');
-}
   }
+}
+
+/**
+ * MODULE ======> PROPOSALS & MILESTONES (HU-03 / HU-04)
+ */
+export class ProjectNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(projectId: string) {
+    super(`La convocatoria con id "${projectId}" no existe o ya no está disponible.`);
+  }
+}
+
+export class ProposalAlreadySubmittedException extends DomainException {
+  public readonly statusCode = 409;
+  constructor() {
+    super('Ya has postulado una propuesta para esta convocatoria. No se permiten propuestas duplicadas.');
+  }
+}
+
+export class ProposalExceedsProjectBudgetException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(totalPrice: number, maxBudget: number) {
+    super(`El monto total de la propuesta ($${totalPrice.toFixed(2)}) excede el presupuesto máximo del proyecto ($${maxBudget.toFixed(2)}).`);
+  }
+}
+
+export class ProposalMilestonesMismatchException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('La suma del monto de los hitos debe ser igual al precio total de la propuesta.');
+  }
+}
+
+export class FreelancerRoleRequiredException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('Solo los usuarios con rol FREELANCER pueden postular propuestas a proyectos.');
+  }
+}
+
+export class ProjectNotActiveException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('No se pueden enviar propuestas a una convocatoria que no se encuentra activa.');
+  }
+}

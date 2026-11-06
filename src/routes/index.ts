@@ -5,6 +5,7 @@ import { profileRouter } from './profile.routes.js';
 import { internalTasksRouter } from './internal-tasks.routes.js';
 import { internalTeamRouter } from './internal-team.routes.js';
 import { projectRouter } from '../presentation/routes/project.routes.js';
+import { proposalRouter } from '../presentation/routes/proposal.routes.js';
 
 export const apiRouter = Router();
 
@@ -19,6 +20,9 @@ apiRouter.use('/v1/profile', profileRouter);
 
 // Rutas de la API v1 (Módulo de Proyectos)
 apiRouter.use('/v1/projects', projectRouter);
+
+// Rutas de la API v1 (Módulo de Propuestas y Cotizaciones)
+apiRouter.use('/v1/proposals', proposalRouter);
 
 // Rutas de la API v1 (Módulo Interno de Tareas / Mini-Jira Equipo)
 apiRouter.use('/v1/internal/tasks', internalTasksRouter);
