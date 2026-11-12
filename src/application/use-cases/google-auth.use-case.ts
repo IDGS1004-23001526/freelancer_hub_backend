@@ -56,7 +56,7 @@ export class GoogleAuthUseCase {
       // Si aún no estaba verificado, marcar como verificado dado que Google valida el email
       if (!user.isVerified) {
         user.verifyEmail();
-        await this.userRepository.save(user);
+        await this.userRepository.update(user);
       }
     } else {
       // 3. Si no existe, crear nuevo usuario federado
