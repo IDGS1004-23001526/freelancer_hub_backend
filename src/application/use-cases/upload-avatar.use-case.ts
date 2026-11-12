@@ -1,3 +1,4 @@
+import { Profile } from '../../domain/entities/profile.entity.js';
 import { Avatar } from '../../domain/value-objects/avatar.vo.js';
 import { IProfileRepository } from '../../domain/repositories/profile.repository.interface.js';
 import { IStorageService } from '../interfaces/storage-service.interface.js';
@@ -13,10 +14,10 @@ export class UploadAvatarUseCase {
   ) {}
 
   async execute(userId: string, file: Buffer, filename: string): Promise<string> {
-    // 1. Validamos que el perfil exista antes de subir un archivo innecesariamente
-    const profile = await this.profileRepository.findByUserId(userId);
+    // 1. Buscamos el perfil; si aún no existe en BD, lo inicializamos para permitir guardar el avatar
+    let profile = await this.profileRepository.findByUserId(userId);
     if (!profile) {
-      throw new Error('Perfil no encontrado');
+      profile = new Profile(userId, 'Usuario', 'FreelancerHub');
     }
 
     // 2. Delegamos la subida física del archivo al servicio de infraestructura

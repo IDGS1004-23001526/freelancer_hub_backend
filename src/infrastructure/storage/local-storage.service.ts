@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { IStorageService } from '../../application/interfaces/storage-service.interface.js';
@@ -16,12 +17,14 @@ export class LocalStorageService implements IStorageService {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const filePath = path.join(uploadDir, filename);
+    const baseName = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uniqueFilename = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${baseName}`;
+    const filePath = path.join(uploadDir, uniqueFilename);
 
     // Escribe el Buffer en el disco físico
     await fs.promises.writeFile(filePath, file);
 
     // Retorna la ruta relativa que se guardará en la BD y servirá al frontend
-    return `/uploads/${filename}`;
+    return `/uploads/${uniqueFilename}`;
   }
 }

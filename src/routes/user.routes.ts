@@ -130,6 +130,8 @@ usersRouter.post(
         req.file.originalname
       );
 
+      Container.realtimeServer.emitProfileUpdated(userId, { avatarUrl });
+
       return res.status(201).json({
         success: true,
         statusCode: 201,

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -46,6 +47,11 @@ export function createApp(): Express {
   app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Servir archivos estáticos subidos (avatares y adjuntos de chat)
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsDir));
+  app.use('/api/v1/uploads', express.static(uploadsDir));
 
   // Documentación interactiva Swagger UI y especificación JSON
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

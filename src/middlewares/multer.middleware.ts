@@ -17,10 +17,11 @@ export const uploadMiddleware = multer({
     file: Express.Multer.File,
     cb: FileFilterCallback
   ) => {
-    if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Formato no permitido. Solo JPG y PNG.'));
+      cb(new Error('Formato no permitido. Solo JPG, PNG y WEBP.'));
     }
   },
 });
