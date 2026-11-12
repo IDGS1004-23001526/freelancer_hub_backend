@@ -28,6 +28,8 @@ import { ProjectController } from './presentation/controllers/project.controller
 import { PrismaProposalRepository } from './infrastructure/persistence/repositories/prisma-proposal.repository.js';
 import { SubmitProposalUseCase } from './application/use-cases/submit-proposal.use-case.js';
 import { ProposalController } from './presentation/controllers/proposal.controller.js';
+import { RealtimeSocketServer } from './infrastructure/realtime/socket.server.js';
+import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.interface.js';
 
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
@@ -43,6 +45,10 @@ export class Container {
   public static readonly storageService = new LocalStorageService();
   public static readonly projectRepository = new PrismaProjectRepository(prisma);
   public static readonly proposalRepository = new PrismaProposalRepository(prisma);
+  public static readonly realtimeServer = new RealtimeSocketServer(
+    Container.jwtTokenGenerator
+  );
+  public static readonly realtimeNotifier: IRealtimeNotifier = Container.realtimeServer;
 
   // Capa de Aplicación - Casos de Uso (Auth)
   public static readonly registerUserUseCase = new RegisterUserUseCase(
