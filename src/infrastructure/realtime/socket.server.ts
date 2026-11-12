@@ -1,36 +1,31 @@
 import crypto from 'node:crypto';
 import { Server as HttpServer } from 'node:http';
 import { Server, Socket } from 'socket.io';
-import {
-  IJwtTokenGenerator,
-  JwtUserClaims,
+import {IJwtTokenGenerator,JwtUserClaims,
 } from '../../application/interfaces/jwt-token-generator.interface.js';
-import {
-  CONTRACT_SOCKET_EVENTS,
-  ContractAccessValidator,
-  ContractStatusChangedEventPayload,
-  IRealtimeNotifier,
-  MilestoneEventPayload,
-  NewMessageEventPayload,
+import {  CONTRACT_SOCKET_EVENTS,ContractAccessValidator,ContractStatusChangedEventPayload, IRealtimeNotifier,MilestoneEventPayload,NewMessageEventPayload,
 } from '../../application/interfaces/realtime-notifier.interface.js';
 import { env } from '../../config/env.js';
 import { prisma } from '../persistence/prisma/prisma.client.js';
 
+// Esta es una expresion regular para validar que sea un UUID que es el identificador de las tablas 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+//prefijo para identificar que es una sala
 const ROOM_PREFIX = 'room:';
 
 interface SocketData {
   user: JwtUserClaims;
 }
-
+// autenticacion aplicando socket io y middleware jwt
 type AuthenticatedSocket = Socket<Record<string, any>, Record<string, any>, Record<string, any>, SocketData>;
-
+// los parametros de entrada
 interface JoinRoomPayload {
   contractId?: string;
   roomId?: string;
   conversationId?: string;
 }
 
+// parametros de salida
 interface SendMessagePayload {
   id?: string;
   contractId?: string;
@@ -39,6 +34,7 @@ interface SendMessagePayload {
   content?: string;
 }
 
+// respuesta de ark que es nos permite recepcion de errores y exitos
 interface AckResponse {
   ok: boolean;
   room?: string;
@@ -114,6 +110,16 @@ export const defaultContractAccessValidator: ContractAccessValidator = async (
   }
 
   try {
+    // Validar si el ID pertenece a una conversación directa registrada en BD
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: contractId },
+      select: { clientId: true, freelancerId: true },
+    });
+
+    if (conversation) {
+      return conversation.clientId === userId || conversation.freelancerId === userId;
+    }
+
     // Soporte directo para el modelo Contract cuando exista en el esquema Prisma
     const prismaDynamic = prisma as unknown as {
       contract?: {
@@ -180,6 +186,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
     private readonly jwtTokenGenerator: IJwtTokenGenerator,
     options: RealtimeSocketServerOptions = {}
   ) {
+    // 
     this.canAccessContract = options.canAccessContract ?? defaultContractAccessValidator;
     this.corsOrigins = options.corsOrigins ?? [
       'http://localhost:5173',
@@ -238,6 +245,8 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
   private registerSocketHandlers(io: Server, socket: AuthenticatedSocket): void {
     const user = socket.data.user;
+    // Unir al usuario a su sala personal para sincronización entre Web y Móvil (ej. cambio de avatar)
+    void socket.join(`user:${user.sub}`);
 
     const handleJoin = async (input: unknown, ack?: AckCallback): Promise<void> => {
       const contractId = extractContractId(input);
@@ -280,7 +289,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
     socket.on('leave_contract', handleLeave);
     socket.on('leave_room', handleLeave);
 
-    socket.on('send_message', (raw: SendMessagePayload, ack?: AckCallback) => {
+    socket.on('send_message', async (raw: SendMessagePayload, ack?: AckCallback) => {
       const contractId = extractContractId(raw);
       const content = typeof raw?.content === 'string' ? raw.content.trim() : '';
 
@@ -297,13 +306,43 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
         return;
       }
 
+      let messageId = typeof raw?.id === 'string' && raw.id.trim() ? raw.id.trim() : crypto.randomUUID();
+      let createdAt = new Date().toISOString();
+
+      try {
+        if (UUID_REGEX.test(contractId)) {
+          const conv = await prisma.conversation.findUnique({
+            where: { id: contractId },
+            select: { id: true, clientId: true, freelancerId: true },
+          });
+          if (conv && (conv.clientId === user.sub || conv.freelancerId === user.sub || user.role === 'ADMIN')) {
+            const saved = await prisma.message.create({
+              data: {
+                id: UUID_REGEX.test(messageId) ? messageId : undefined,
+                conversationId: contractId,
+                senderId: user.sub,
+                content,
+              },
+            });
+            await prisma.conversation.update({
+              where: { id: contractId },
+              data: { updatedAt: new Date() },
+            });
+            messageId = saved.id;
+            createdAt = saved.createdAt.toISOString();
+          }
+        }
+      } catch {
+        // Fallback a emisión en tiempo real si la sala es de contrato sin conversación BD
+      }
+
       const payload: NewMessageEventPayload = {
-        id: typeof raw?.id === 'string' && raw.id.trim() ? raw.id.trim() : crypto.randomUUID(),
+        id: messageId,
         contractId,
         senderId: user.sub,
         senderRole: user.role,
         content,
-        createdAt: new Date().toISOString(),
+        createdAt,
       };
 
       io.to(room).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE, payload);
@@ -350,6 +389,10 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
   public emitNewMessage(contractId: string, payload: NewMessageEventPayload): void {
     this.io?.to(getContractRoom(contractId)).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE, payload);
+  }
+
+  public emitProfileUpdated(userId: string, data: { avatarUrl?: string }): void {
+    this.io?.to(`user:${userId}`).emit('profile_updated', { userId, ...data });
   }
 
   public emitMilestoneSubmitted(contractId: string, payload: MilestoneEventPayload): void {

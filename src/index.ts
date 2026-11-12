@@ -10,9 +10,9 @@ const httpServer = createServer(app);
 Container.realtimeServer.attach(httpServer);
 
 httpServer.listen(env.PORT, () => {
-  console.log(`🚀 Freelancer Hub Backend ejecutándose en http://localhost:${env.PORT}`);
-  console.log(`🔌 Servidor WebSockets (Socket.io) activo en el mismo puerto`);
-  console.log(`📡 Entorno: ${env.NODE_ENV}`);
+  console.log(` Freelancer Hub Backend ejecutándose en http://localhost:${env.PORT}`);
+  console.log(` Servidor WebSockets (Socket.io) activo en el mismo puerto`);
+  console.log(` Entorno: ${env.NODE_ENV}`);
 });
 
 /**
@@ -24,10 +24,10 @@ const cierreControlado = async (senal: string): Promise<void> => {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  console.log(`\n🛑 Recibida señal ${senal}, cerrando WebSockets y servidor HTTP de forma segura...`);
+  console.log(`\n Recibida señal ${senal}, cerrando WebSockets y servidor HTTP de forma segura...`);
 
   const forceExitTimer = setTimeout(() => {
-    console.warn('⚠️ Tiempo de espera agotado al cerrar conexiones; forzando salida.');
+    console.warn(' Tiempo de espera agotado al cerrar conexiones; forzando salida.');
     process.exit(1);
   }, 5000);
   forceExitTimer.unref();
@@ -35,12 +35,12 @@ const cierreControlado = async (senal: string): Promise<void> => {
   try {
     await Container.realtimeServer.close();
   } catch (err) {
-    console.error('❌ Error al cerrar servidor Socket.io:', err);
+    console.error(' Error al cerrar servidor Socket.io:', err);
   }
 
   httpServer.close(() => {
     clearTimeout(forceExitTimer);
-    console.log('✅ Servidor HTTP y WebSockets cerrados. Proceso finalizado.');
+    console.log(' Servidor HTTP y WebSockets cerrados. Proceso finalizado.');
     process.exit(0);
   });
 };

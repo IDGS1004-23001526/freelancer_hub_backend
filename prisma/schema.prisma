@@ -84,6 +84,12 @@ model User {
 
   proposals        Proposal[]
 
+  clientConversations     Conversation[] @relation("ClientConversations")
+
+  freelancerConversations Conversation[] @relation("FreelancerConversations")
+
+  sentMessages            Message[]      @relation("SentMessages")
+
   @@map("users")
 }
 
@@ -380,6 +386,7 @@ model Project {
   client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   skills        ProjectSkill[]
   proposals     Proposal[]
+  conversations Conversation[]
 
   @@index([clientId])
   @@index([status])
@@ -501,4 +508,47 @@ model MilestoneQuote {
   @@index([proposalId])
   @@index([proposalId, order])
   @@map("milestone_quotes")
+}
+
+
+// ----------------------------------------------------------------------------
+// MODULO DE MENSAJERIA / CHATS EN TIEMPO REAL
+// ----------------------------------------------------------------------------
+
+model Conversation {
+  id           String    @id @default(uuid()) @db.Uuid
+  projectId    String?   @map("project_id") @db.Uuid
+  projectName  String?   @map("project_name") @db.VarChar(150)
+  clientId     String    @map("client_id") @db.Uuid
+  freelancerId String    @map("freelancer_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  client     User      @relation("ClientConversations", fields: [clientId], references: [id], onDelete: Cascade)
+  freelancer User      @relation("FreelancerConversations", fields: [freelancerId], references: [id], onDelete: Cascade)
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages   Message[]
+
+  @@index([clientId])
+  @@index([freelancerId])
+  @@index([updatedAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  senderId       String       @map("sender_id") @db.Uuid
+  content        String       @db.Text
+  attachmentUrl  String?      @map("attachment_url") @db.VarChar(500)
+  isRead         Boolean      @default(false) @map("is_read")
+  readAt         DateTime?    @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
 }
