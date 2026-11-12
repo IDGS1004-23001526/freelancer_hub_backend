@@ -487,6 +487,10 @@ chatRouter.post('/:conversationId/messages', async (req: Request, res: Response)
     };
 
     Container.realtimeServer.emitNewMessage(conversationId, payload);
+    const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
+    if (recipientId && recipientId !== userId) {
+      Container.realtimeServer.emitMessageNotification(recipientId, payload);
+    }
 
     return res.status(201).json({
       success: true,
@@ -573,6 +577,10 @@ chatRouter.post(
       };
 
       Container.realtimeServer.emitNewMessage(conversationId, payload);
+    const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
+    if (recipientId && recipientId !== userId) {
+      Container.realtimeServer.emitMessageNotification(recipientId, payload);
+    }
 
       return res.status(201).json({
         success: true,

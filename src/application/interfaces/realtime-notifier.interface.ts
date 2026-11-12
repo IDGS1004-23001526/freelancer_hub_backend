@@ -3,6 +3,7 @@
  */
 export const CONTRACT_SOCKET_EVENTS = {
   NEW_MESSAGE: 'new_message',
+  NEW_MESSAGE_NOTIFICATION: 'new_message_notification',
   MILESTONE_SUBMITTED: 'milestone_submitted',
   MILESTONE_APPROVED: 'milestone_approved',
   CONTRACT_STATUS_CHANGED: 'contract_status_changed',
@@ -11,9 +12,13 @@ export const CONTRACT_SOCKET_EVENTS = {
 export interface NewMessageEventPayload {
   id: string;
   contractId: string;
+  conversationId?: string;
   senderId: string;
   senderRole?: string;
+  senderName?: string;
+  senderAvatarUrl?: string | null;
   content: string;
+  attachmentUrl?: string | null;
   createdAt: string;
 }
 

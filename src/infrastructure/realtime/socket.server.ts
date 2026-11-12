@@ -391,6 +391,12 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
     this.io?.to(getContractRoom(contractId)).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE, payload);
   }
 
+  public emitMessageNotification(recipientUserId: string, payload: NewMessageEventPayload): void {
+    this.io
+      ?.to(`user:${recipientUserId}`)
+      .emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE_NOTIFICATION, payload);
+  }
+
   public emitProfileUpdated(userId: string, data: { avatarUrl?: string }): void {
     this.io?.to(`user:${userId}`).emit('profile_updated', { userId, ...data });
   }
