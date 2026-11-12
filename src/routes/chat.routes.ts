@@ -79,6 +79,74 @@ async function getAuthorizedConversation(conversationId: string, userId: string,
 }
 
 /**
+ * @ruta GET /api/v1/chats/contacts
+ * @descripcion Busca perfiles/usuarios existentes en la plataforma (excluyendo al usuario autenticado) para iniciar un nuevo chat
+ */
+chatRouter.get('/contacts', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ success: false, statusCode: 401, message: 'Usuario no autenticado' });
+    }
+
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+
+    const users = await prisma.user.findMany({
+      where: {
+        id: { not: userId },
+        isActive: true,
+        ...(search
+          ? {
+              OR: [
+                { email: { contains: search, mode: 'insensitive' } },
+                { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+                { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+                { profile: { professionalTitle: { contains: search, mode: 'insensitive' } } },
+              ],
+            }
+          : {}),
+      },
+      take: 30,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            professionalTitle: true,
+          },
+        },
+      },
+    });
+
+    const data = users.map((u) => ({
+      id: u.id,
+      name: formatUserName(u),
+      email: u.email,
+      role: u.profile?.professionalTitle || formatRoleLabel(u.role),
+      userRole: u.role,
+      avatarUrl: u.profile?.avatarUrl ?? null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      data,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: error.message || 'Error al buscar perfiles disponibles',
+    });
+  }
+});
+
+/**
  * @ruta GET /api/v1/chats
  * @descripcion Lista únicamente las conversaciones donde participa el usuario autenticado
  */
