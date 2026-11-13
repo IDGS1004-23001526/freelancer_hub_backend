@@ -1,13 +1,23 @@
 import { Router } from 'express';
 import { Container } from '../../container.js';
-import { validateBody } from '../middlewares/validate-request.middleware.js';
-import { createProjectSchema } from '../../application/validation/project.schemas.js';
+import { validateBody, validateQuery } from '../middlewares/validate-request.middleware.js';
+import { createProjectSchema, getProjectsQuerySchema } from '../../application/validation/project.schemas.js';
 import { createRateLimitMiddleware } from '../middlewares/rate-limit.middleware.js';
 import { roleGuard } from '../middlewares/role.middleware.js';
 import { UserRole } from '../../domain/value-objects/user-role.enum.js';
 
 export const projectRouter = Router();
 
+/**
+ * @ruta GET /api/v1/projects
+ * @descripcion Consulta y filtra convocatorias activas para el feed
+ * @acceso Público
+ */
+projectRouter.get(
+    '/',
+    validateQuery(getProjectsQuerySchema),
+    Container.projectController.getProjects
+);
 
 const createProjectRateLimit = createRateLimitMiddleware({
     maxRequests: 10,

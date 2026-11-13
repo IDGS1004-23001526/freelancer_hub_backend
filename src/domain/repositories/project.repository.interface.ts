@@ -2,8 +2,10 @@ import { Project, ProjectStatus } from "../entities/project.entity.js";
 
 export interface ProjectSearchParams {
     query?: string;
+    search?: string;
     category?: string;
     skillSlug?: string;
+    skills?: string[];
     minBudget?: number;
     maxBudget?: number;
     status?: ProjectStatus;

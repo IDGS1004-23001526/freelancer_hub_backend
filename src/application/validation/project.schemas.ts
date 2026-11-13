@@ -33,3 +33,30 @@ export const createProjectSchema = z.object({
 });
 
 export type CreateProjectRequestDto = z.infer<typeof createProjectSchema>;
+
+export const getProjectsQuerySchema = z.object({
+    search: z.string().trim().optional(),
+    category: z.string().trim().optional(),
+    minBudget: z.coerce.number().min(0, 'El presupuesto mínimo no puede ser negativo').optional(),
+    maxBudget: z.coerce.number().positive('El presupuesto máximo debe ser mayor a 0').optional(),
+    skills: z
+        .union([z.string(), z.array(z.string())])
+        .optional()
+        .transform((val) => {
+            if (!val) return undefined;
+            if (Array.isArray(val)) {
+                return val
+                    .flatMap((s) => s.split(','))
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+            }
+            return val
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean);
+        }),
+    page: z.coerce.number().int().min(1, 'La página mínima es 1').default(1),
+    limit: z.coerce.number().int().min(1, 'El límite mínimo es 1').max(50, 'El límite máximo es 50').default(10),
+});
+
+export type GetProjectsQueryDto = z.infer<typeof getProjectsQuerySchema>;

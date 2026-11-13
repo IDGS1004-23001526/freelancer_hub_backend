@@ -48,52 +48,75 @@ export class PrismaProjectRepository implements IProjectRepository {
         const limit = Math.max(1, Math.min(50, params.limit || 10));
         const skip = (page - 1) * limit;
 
-        const where: Prisma.ProjectWhereInput = {};
+        const andConditions: Prisma.ProjectWhereInput[] = [];
 
-        if (params.status) {
-            where.status = params.status;
-        }
+        // 2. Retornar solo proyectos con status 'ACTIVE'
+        andConditions.push({
+            status: params.status || ProjectStatus.ACTIVE,
+        });
 
         if (params.minBudget !== undefined || params.maxBudget !== undefined) {
-            where.budget = {};
+            const budgetFilter: Prisma.DecimalFilter = {};
             if (params.minBudget !== undefined) {
-                where.budget.gte = params.minBudget;
+                budgetFilter.gte = params.minBudget;
             }
             if (params.maxBudget !== undefined) {
-                where.budget.lte = params.maxBudget;
+                budgetFilter.lte = params.maxBudget;
             }
+            andConditions.push({ budget: budgetFilter });
         }
 
-        if (params.skillSlug) {
-            where.skills = {
-                some: {
-                    skill: {
-                        slug: params.skillSlug.toLowerCase(),
-                    },
-                },
-            };
+        // Filtro por skills (array de tags o lista de slugs/nombres)
+        const skillTerms: string[] = [];
+        if (params.skills && params.skills.length > 0) {
+            skillTerms.push(...params.skills);
+        }
+        if (params.skillSlug && params.skillSlug.trim()) {
+            skillTerms.push(params.skillSlug.trim());
         }
 
-        if (params.category) {
-            where.skills = {
-                some: {
-                    skill: {
-                        category: {
-                            equals: params.category,
-                            mode: 'insensitive',
+        if (skillTerms.length > 0) {
+            const slugs = skillTerms.map((s) => this.toSlug(s)).filter(Boolean);
+            andConditions.push({
+                skills: {
+                    some: {
+                        skill: {
+                            OR: [
+                                { slug: { in: slugs } },
+                                { name: { in: skillTerms, mode: 'insensitive' } },
+                            ],
                         },
                     },
                 },
-            };
+            });
         }
 
-        if (params.query && params.query.trim()) {
-            const cleanQuery = params.query.trim();
-            where.OR = [
-                { title: { contains: cleanQuery, mode: 'insensitive' } },
-                { description: { contains: cleanQuery, mode: 'insensitive' } },
-            ];
+        if (params.category && params.category.trim()) {
+            andConditions.push({
+                skills: {
+                    some: {
+                        skill: {
+                            category: {
+                                equals: params.category.trim(),
+                                mode: 'insensitive',
+                            },
+                        },
+                    },
+                },
+            });
         }
+
+        const rawSearch = (params.search || params.query || '').trim();
+        if (rawSearch) {
+            andConditions.push({
+                OR: [
+                    { title: { contains: rawSearch, mode: 'insensitive' } },
+                    { description: { contains: rawSearch, mode: 'insensitive' } },
+                ],
+            });
+        }
+
+        const where: Prisma.ProjectWhereInput = andConditions.length > 0 ? { AND: andConditions } : {};
 
         const [items, total] = await Promise.all([
             this.prisma.project.findMany({

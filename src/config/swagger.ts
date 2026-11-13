@@ -296,6 +296,105 @@ const options: swaggerJsdoc.Options = {
         },
       },
       '/api/v1/projects': {
+        get: {
+          tags: ['Projects'],
+          summary: 'Consulta y filtra convocatorias activas para el feed',
+          parameters: [
+            {
+              name: 'search',
+              in: 'query',
+              required: false,
+              description: 'Búsqueda por palabra clave en título y descripción',
+              schema: { type: 'string', example: 'React' },
+            },
+            {
+              name: 'category',
+              in: 'query',
+              required: false,
+              description: 'Filtro por categoría de habilidades',
+              schema: { type: 'string', example: 'Frontend' },
+            },
+            {
+              name: 'minBudget',
+              in: 'query',
+              required: false,
+              description: 'Presupuesto mínimo',
+              schema: { type: 'number', example: 500 },
+            },
+            {
+              name: 'maxBudget',
+              in: 'query',
+              required: false,
+              description: 'Presupuesto máximo',
+              schema: { type: 'number', example: 5000 },
+            },
+            {
+              name: 'skills',
+              in: 'query',
+              required: false,
+              description: 'Filtro por habilidades (lista separada por comas o array)',
+              schema: { type: 'string', example: 'React,Node.js' },
+            },
+            {
+              name: 'page',
+              in: 'query',
+              required: false,
+              description: 'Número de página',
+              schema: { type: 'integer', default: 1, example: 1 },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              description: 'Cantidad de elementos por página',
+              schema: { type: 'integer', default: 10, example: 10 },
+            },
+          ],
+          responses: {
+            200: {
+              description: 'Lista paginada de convocatorias activas',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      statusCode: { type: 'number', example: 200 },
+                      message: { type: 'string', example: 'Convocatorias obtenidas exitosamente' },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            clientId: { type: 'string', format: 'uuid' },
+                            title: { type: 'string' },
+                            description: { type: 'string' },
+                            budget: { type: 'number' },
+                            skills: { type: 'array', items: { type: 'string' } },
+                            estimatedDate: { type: 'string', format: 'date-time' },
+                            status: { type: 'string', example: 'ACTIVE' },
+                            createdAt: { type: 'string', format: 'date-time' },
+                          },
+                        },
+                      },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          total: { type: 'integer', example: 25 },
+                          totalPages: { type: 'integer', example: 3 },
+                          currentPage: { type: 'integer', example: 1 },
+                          limit: { type: 'integer', example: 10 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: { description: 'Parámetros de consulta inválidos' },
+          },
+        },
         post: {
           tags: ['Projects'],
           summary: 'Crea una convocatoria',

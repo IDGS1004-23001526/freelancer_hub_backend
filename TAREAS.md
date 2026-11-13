@@ -140,7 +140,7 @@ Garantizar que la app móvil funcione y permita consultar convocatorias incluso 
 ## 👤 Christian (5 Tareas)
 
 ### 1. FREEL-39: [BACKEND / API] API de Feed Reactivo con Filtrado por Tags y Presupuesto (HU-01 / HU-02)
-- **Prioridad**: `URGENT` | **Estado**: `TODO`
+- **Prioridad**: `URGENT` | **Estado**: `DONE`
 
 ```text
 [CAPA DEL PROYECTO]

@@ -23,6 +23,7 @@ import { createAuthMiddleware } from './presentation/middlewares/auth.middleware
 
 import { PrismaProjectRepository } from './infrastructure/persistence/repositories/prisma-proyect.repository.js';
 import { CreateProjectUseCase } from './application/use-cases/create-project.use-case.js';
+import { GetProjectsUseCase } from './application/use-cases/get-projects.use-case.js';
 import { ProjectController } from './presentation/controllers/project.controller.js';
 
 import { PrismaProposalRepository } from './infrastructure/persistence/repositories/prisma-proposal.repository.js';
@@ -105,6 +106,10 @@ export class Container {
     Container.projectRepository
   );
 
+  public static readonly getProjectsUseCase = new GetProjectsUseCase(
+    Container.projectRepository
+  );
+
   public static readonly submitProposalUseCase = new SubmitProposalUseCase(
     Container.proposalRepository
   );
@@ -127,7 +132,8 @@ export class Container {
   );
 
   public static readonly projectController = new ProjectController(
-    Container.createProjectUseCase
+    Container.createProjectUseCase,
+    Container.getProjectsUseCase
   );
 
   public static readonly proposalController = new ProposalController(
