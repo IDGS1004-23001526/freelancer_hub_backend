@@ -90,6 +90,10 @@ model User {
 
   sentMessages            Message[]      @relation("SentMessages")
 
+  clientContracts         Contract[]     @relation("ClientContracts")
+  freelancerContracts     Contract[]     @relation("FreelancerContracts")
+  wallet                  Wallet?
+
   @@map("users")
 }
 
@@ -387,6 +391,7 @@ model Project {
   skills        ProjectSkill[]
   proposals     Proposal[]
   conversations Conversation[]
+  contracts     Contract[]
 
   @@index([clientId])
   @@index([status])
@@ -459,6 +464,7 @@ model Proposal {
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   freelancer    User           @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
   milestones    MilestoneQuote[]
+  contract      Contract?
 
   /// Regla anti-abuso a nivel de persistencia: un freelancer solo puede tener 1 propuesta por proyecto
   @@unique([projectId, freelancerId], name: "unique_project_freelancer_proposal")
@@ -551,4 +557,118 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@map("messages")
+}
+
+// ----------------------------------------------------------------------------
+// MODULO DE CONTRATOS Y CUSTODIA ESCROW (FLH-ESCROW-01 / HU-05)
+// ----------------------------------------------------------------------------
+
+enum ContractStatus {
+  DRAFT       // Contrato creado al aceptar propuesta, pendiente de fondeo Escrow
+  FUNDED      // Fondos retenidos en custodia, listo para iniciar trabajo
+  IN_PROGRESS // Trabajo en curso por el freelancer
+  COMPLETED   // Todos los hitos aprobados y fondos liberados
+  DISPUTED    // En mediación / disputa
+}
+
+enum ContractMilestoneStatus {
+  PENDING     // En espera
+  IN_PROGRESS // Freelancer trabajando en el entregable
+  SUBMITTED   // Entregable enviado para revisión
+  APPROVED    // Aprobado y liberado por el cliente
+}
+
+model Contract {
+  id           String              @id @default(uuid()) @db.Uuid
+  projectId    String              @map("project_id") @db.Uuid
+  proposalId   String              @unique @map("proposal_id") @db.Uuid
+  clientId     String              @map("client_id") @db.Uuid
+  freelancerId String              @map("freelancer_id") @db.Uuid
+  totalAmount  Decimal             @map("total_amount") @db.Decimal(12, 2)
+  escrowBalance Decimal            @default(0) @map("escrow_balance") @db.Decimal(12, 2)
+  status       ContractStatus      @default(DRAFT)
+  fundedAt     DateTime?           @map("funded_at") @db.Timestamptz(6)
+  completedAt  DateTime?           @map("completed_at") @db.Timestamptz(6)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proposal     Proposal            @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  client       User                @relation("ClientContracts", fields: [clientId], references: [id], onDelete: Cascade)
+  freelancer   User                @relation("FreelancerContracts", fields: [freelancerId], references: [id], onDelete: Cascade)
+  milestones   ContractMilestone[]
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([freelancerId])
+  @@index([status])
+  @@map("contracts")
+}
+
+model ContractMilestone {
+  id           String                  @id @default(uuid()) @db.Uuid
+  contractId   String                  @map("contract_id") @db.Uuid
+  title        String                  @db.VarChar(150)
+  description  String?                 @db.Text
+  amount       Decimal                 @db.Decimal(12, 2)
+  deliveryDays Int                     @map("delivery_days")
+  order        Int                     @default(1)
+  status       ContractMilestoneStatus @default(PENDING)
+  deliverableUrl String?               @map("deliverable_url") @db.VarChar(500)
+  deliverableHash String?              @map("deliverable_hash") @db.VarChar(128)
+  submittedAt  DateTime?               @map("submitted_at") @db.Timestamptz(6)
+  approvedAt   DateTime?               @map("approved_at") @db.Timestamptz(6)
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contract     Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId, order])
+  @@map("contract_milestones")
+}
+
+// ----------------------------------------------------------------------------
+// MODULO DE BILLETERA DIGITAL, SERVICE FEE Y RETIROS (FLH-WALLET-01 / HU-14)
+// ----------------------------------------------------------------------------
+
+enum WalletTransactionType {
+  DEPOSIT       // Abono / recarga de saldo del cliente
+  ESCROW_HOLD   // Retención de fondos hacia custodia Escrow
+  ESCROW_CREDIT // Pago liberado desde Escrow al freelancer
+  SERVICE_FEE   // Comisión de plataforma (10%) descontada automáticamente
+  WITHDRAWAL    // Retiro de fondos a cuenta bancaria (CLABE)
+}
+
+model Wallet {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @unique @map("user_id") @db.Uuid
+  availableBalance Decimal             @default(0) @map("available_balance") @db.Decimal(12, 2)
+  escrowLocked     Decimal             @default(0) @map("escrow_locked") @db.Decimal(12, 2)
+  currency         String              @default("MXN") @db.VarChar(10)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id            String                @id @default(uuid()) @db.Uuid
+  walletId      String                @map("wallet_id") @db.Uuid
+  type          WalletTransactionType
+  amount        Decimal               @db.Decimal(12, 2)
+  feeAmount     Decimal               @default(0) @map("fee_amount") @db.Decimal(12, 2)
+  netAmount     Decimal               @map("net_amount") @db.Decimal(12, 2)
+  referenceId   String?               @map("reference_id") @db.VarChar(100)
+  clabeAccount  String?               @map("clabe_account") @db.VarChar(18)
+  description   String                @db.VarChar(255)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet        Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt(sort: Desc)])
+  @@index([type])
+  @@map("wallet_transactions")
 }

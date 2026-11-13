@@ -168,3 +168,65 @@ export class ProjectNotActiveException extends DomainException {
     super('No se pueden enviar propuestas a una convocatoria que no se encuentra activa.');
   }
 }
+
+/**
+ * MODULE ======> CONTRACTS & ESCROW (FLH-ESCROW-01 / HU-05)
+ */
+export class ContractNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(contractId: string) {
+    super(`El contrato con id "${contractId}" no existe.`);
+  }
+}
+
+export class ProposalNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(proposalId: string) {
+    super(`La propuesta con id "${proposalId}" no existe.`);
+  }
+}
+
+export class InvalidContractTransitionException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(from: string, to: string) {
+    super(`Transición de contrato no permitida: de "${from}" a "${to}".`);
+  }
+}
+
+export class ContractNotFundedException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('El contrato debe contar con fondos retenidos en custodia Escrow (FUNDED o IN_PROGRESS) antes de registrar avances.');
+  }
+}
+
+export class UnauthorizedContractActionException extends DomainException {
+  public readonly statusCode = 403;
+  constructor(mensaje = 'No tienes autorización para realizar esta operación sobre el contrato.') {
+    super(mensaje);
+  }
+}
+
+export class ContractAlreadyExistsException extends DomainException {
+  public readonly statusCode = 409;
+  constructor() {
+    super('Esta propuesta ya cuenta con un contrato formalizado.');
+  }
+}
+
+/**
+ * MODULE ======> WALLET & FINANCES (FLH-WALLET-01 / HU-14)
+ */
+export class InsufficientFundsException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(required: number, available: number) {
+    super(`Saldo disponible insuficiente ($${available.toFixed(2)}). Se requieren $${required.toFixed(2)}.`);
+  }
+}
+
+export class InvalidClabeException extends DomainException {
+  public readonly statusCode = 400;
+  constructor() {
+    super('La cuenta CLABE interbancaria debe contener exactamente 18 dígitos numéricos.');
+  }
+}

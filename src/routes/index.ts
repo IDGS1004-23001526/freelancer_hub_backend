@@ -10,6 +10,8 @@ import { internalTasksRouter } from './internal-tasks.routes.js';
 import { internalTeamRouter } from './internal-team.routes.js';
 import { projectRouter } from '../presentation/routes/project.routes.js';
 import { proposalRouter } from '../presentation/routes/proposal.routes.js';
+import { contractRouter } from '../presentation/routes/contract.routes.js';
+import { walletRouter } from '../presentation/routes/wallet.routes.js';
 import { chatRouter } from './chat.routes.js';
 
 
@@ -36,6 +38,12 @@ apiRouter.use('/v1/projects', projectRouter);
 
 // Rutas de la API v1 (Módulo de Propuestas y Cotizaciones)
 apiRouter.use('/v1/proposals', proposalRouter);
+
+// Rutas de la API v1 (Módulo de Contratos y Custodia Escrow - FLH-ESCROW-01)
+apiRouter.use('/v1/contracts', contractRouter);
+
+// Rutas de la API v1 (Módulo de Billetera Digital, Service Fee y Retiros - FLH-WALLET-01)
+apiRouter.use('/v1/wallet', walletRouter);
 
 // Rutas de la API v1 (Módulo de Chats y Mensajería en Tiempo Real)
 apiRouter.use('/v1/chats', chatRouter);

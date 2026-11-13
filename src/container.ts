@@ -28,6 +28,10 @@ import { ProjectController } from './presentation/controllers/project.controller
 import { PrismaProposalRepository } from './infrastructure/persistence/repositories/prisma-proposal.repository.js';
 import { SubmitProposalUseCase } from './application/use-cases/submit-proposal.use-case.js';
 import { ProposalController } from './presentation/controllers/proposal.controller.js';
+import { ContractEscrowUseCase } from './application/use-cases/contract-escrow.use-case.js';
+import { ContractController } from './presentation/controllers/contract.controller.js';
+import { WalletUseCase } from './application/use-cases/wallet.use-case.js';
+import { WalletController } from './presentation/controllers/wallet.controller.js';
 import { RealtimeSocketServer } from './infrastructure/realtime/socket.server.js';
 import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.interface.js';
 
@@ -105,6 +109,9 @@ export class Container {
     Container.proposalRepository
   );
 
+  public static readonly contractEscrowUseCase = new ContractEscrowUseCase();
+  public static readonly walletUseCase = new WalletUseCase();
+
   // Capa de Presentación
   public static readonly authController = new AuthController(
     Container.registerUserUseCase,
@@ -126,5 +133,13 @@ export class Container {
   public static readonly proposalController = new ProposalController(
     Container.submitProposalUseCase,
     Container.proposalRepository
+  );
+
+  public static readonly contractController = new ContractController(
+    Container.contractEscrowUseCase
+  );
+
+  public static readonly walletController = new WalletController(
+    Container.walletUseCase
   );
 }
