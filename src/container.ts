@@ -7,6 +7,7 @@ import { InMemoryProfileRepository } from './infrastructure/persistence/reposito
 import { PrismaProfileRepository } from './infrastructure/persistence/repositories/prisma-profile.repository.js';
 import { prisma } from './infrastructure/persistence/prisma/prisma.client.js';
 import { LocalStorageService } from './infrastructure/storage/local-storage.service.js';
+import { LoggerService } from './infrastructure/logging/logger.service.js';
 
 import { RegisterUserUseCase } from './application/use-cases/register-user.use-case.js';
 import { AuthenticateUserUseCase } from './application/use-cases/authenticate-user.use-case.js';
@@ -42,6 +43,7 @@ import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.in
  */
 export class Container {
   // Capa de Infraestructura
+  public static readonly logger = new LoggerService();
   public static readonly passwordHasher = new BcryptPasswordHasher();
   public static readonly jwtTokenGenerator = new JwtTokenGenerator();
   public static readonly userRepository = new PrismaUserRepository(prisma);
@@ -51,7 +53,8 @@ export class Container {
   public static readonly projectRepository = new PrismaProjectRepository(prisma);
   public static readonly proposalRepository = new PrismaProposalRepository(prisma);
   public static readonly realtimeServer = new RealtimeSocketServer(
-    Container.jwtTokenGenerator
+    Container.jwtTokenGenerator,
+    { logger: Container.logger }
   );
   public static readonly realtimeNotifier: IRealtimeNotifier = Container.realtimeServer;
 

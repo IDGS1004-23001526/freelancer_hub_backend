@@ -10,6 +10,7 @@ import { apiRouter } from './routes/index.js';
 import { healthRouter } from './routes/health.route.js';
 import { notFoundHandler } from './middlewares/notFoundHandler.js';
 import { centralizedErrorHandler } from './presentation/middlewares/error-handler.middleware.js';
+import { Container } from './container.js';
 
 /**
  * Fábrica de la aplicación Express.
@@ -45,6 +46,7 @@ export function createApp(): Express {
     })
   );
   app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+  app.use(Container.logger.createHttpMiddleware());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
