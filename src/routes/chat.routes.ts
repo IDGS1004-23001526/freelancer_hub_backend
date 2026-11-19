@@ -36,6 +36,13 @@ function formatRoleLabel(role: string): string {
 
 async function getAuthorizedConversation(conversationId: string, userId: string, role: string) {
   if (!UUID_REGEX.test(conversationId)) {
+    Container.logger.warn('Identificador de conversación inválido', {
+      context: 'CHAT:AUTH',
+      action: 'VALIDATE_CONVERSATION',
+      statusCode: 400,
+      conversationId,
+      userId,
+    });
     return { error: { status: 400, message: 'Identificador de conversación inválido.' }, conversation: null };
   }
 
@@ -63,6 +70,13 @@ async function getAuthorizedConversation(conversationId: string, userId: string,
   });
 
   if (!conversation) {
+    Container.logger.warn('Conversación no encontrada', {
+      context: 'CHAT:AUTH',
+      action: 'GET_CONVERSATION',
+      statusCode: 404,
+      conversationId,
+      userId,
+    });
     return { error: { status: 404, message: 'Conversación no encontrada.' }, conversation: null };
   }
 
@@ -72,6 +86,13 @@ async function getAuthorizedConversation(conversationId: string, userId: string,
     role === 'ADMIN';
 
   if (!isParticipant) {
+    Container.logger.warn('Acceso denegado a conversación ajena', {
+      context: 'CHAT:AUTH',
+      action: 'ACCESS_DENIED',
+      statusCode: 403,
+      conversationId,
+      userId,
+    });
     return { error: { status: 403, message: 'No tienes permiso para acceder a esta conversación.' }, conversation: null };
   }
 
@@ -132,12 +153,26 @@ chatRouter.get('/contacts', async (req: Request, res: Response) => {
       avatarUrl: u.profile?.avatarUrl ?? null,
     }));
 
+    Container.logger.info('Contactos de chat consultados', {
+      context: 'CHAT:REST',
+      action: 'GET_CONTACTS',
+      statusCode: 200,
+      userId,
+      resultCount: data.length,
+    });
+
     return res.status(200).json({
       success: true,
       statusCode: 200,
       data,
     });
   } catch (error: any) {
+    Container.logger.error('Error al buscar perfiles disponibles', error, {
+      context: 'CHAT:REST',
+      action: 'GET_CONTACTS',
+      statusCode: 500,
+      userId: req.user?.sub,
+    });
     return res.status(500).json({
       success: false,
       statusCode: 500,
@@ -218,12 +253,26 @@ chatRouter.get('/', async (req: Request, res: Response) => {
       };
     });
 
+    Container.logger.info('Listado de conversaciones consultado', {
+      context: 'CHAT:REST',
+      action: 'GET_CONVERSATIONS',
+      statusCode: 200,
+      userId,
+      resultCount: data.length,
+    });
+
     return res.status(200).json({
       success: true,
       statusCode: 200,
       data,
     });
   } catch (error: any) {
+    Container.logger.error('Error al obtener las conversaciones', error, {
+      context: 'CHAT:REST',
+      action: 'GET_CONVERSATIONS',
+      statusCode: 500,
+      userId: req.user?.sub,
+    });
     return res.status(500).json({
       success: false,
       statusCode: 500,
@@ -247,14 +296,32 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     const { peerId, projectId, projectName } = req.body ?? {};
 
     if (typeof peerId !== 'string' || !UUID_REGEX.test(peerId)) {
+      Container.logger.warn('peerId inválido al crear chat', {
+        context: 'CHAT:REST',
+        action: 'CREATE_CONVERSATION',
+        statusCode: 400,
+        userId,
+      });
       return res.status(400).json({ success: false, statusCode: 400, message: 'peerId debe ser un UUID válido.' });
     }
 
     if (peerId === userId) {
+      Container.logger.warn('Intento de crear chat consigo mismo', {
+        context: 'CHAT:REST',
+        action: 'CREATE_CONVERSATION',
+        statusCode: 400,
+        userId,
+      });
       return res.status(400).json({ success: false, statusCode: 400, message: 'No puedes iniciar un chat contigo mismo.' });
     }
 
     if (projectId !== undefined && projectId !== null && (typeof projectId !== 'string' || !UUID_REGEX.test(projectId))) {
+      Container.logger.warn('projectId inválido al crear chat', {
+        context: 'CHAT:REST',
+        action: 'CREATE_CONVERSATION',
+        statusCode: 400,
+        userId,
+      });
       return res.status(400).json({ success: false, statusCode: 400, message: 'projectId debe ser un UUID válido.' });
     }
 
@@ -269,6 +336,13 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     });
 
     if (!peerUser) {
+      Container.logger.warn('Destinatario no encontrado al crear chat', {
+        context: 'CHAT:REST',
+        action: 'CREATE_CONVERSATION',
+        statusCode: 404,
+        userId,
+        peerId,
+      });
       return res.status(404).json({ success: false, statusCode: 404, message: 'El usuario destinatario no existe.' });
     }
 
@@ -276,6 +350,13 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     if (projectId) {
       const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true, title: true } });
       if (!project) {
+        Container.logger.warn('Proyecto especificado no existe al crear chat', {
+          context: 'CHAT:REST',
+          action: 'CREATE_CONVERSATION',
+          statusCode: 404,
+          userId,
+          projectId,
+        });
         return res.status(404).json({ success: false, statusCode: 404, message: 'El proyecto especificado no existe.' });
       }
       resolvedProjectName = project.title;
@@ -292,6 +373,13 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     });
 
     if (existing) {
+      Container.logger.info('Conversación existente recuperada', {
+        context: 'CHAT:REST',
+        action: 'GET_CONVERSATION',
+        statusCode: 200,
+        userId,
+        conversationId: existing.id,
+      });
       return res.status(200).json({
         success: true,
         statusCode: 200,
@@ -317,6 +405,15 @@ chatRouter.post('/', async (req: Request, res: Response) => {
         projectId: projectId ?? null,
         projectName: resolvedProjectName,
       },
+    });
+
+    Container.logger.info('Nueva conversación creada', {
+      context: 'CHAT:REST',
+      action: 'CREATE_CONVERSATION',
+      statusCode: 201,
+      userId,
+      conversationId: created.id,
+      peerId,
     });
 
     return res.status(201).json({
@@ -391,12 +488,28 @@ chatRouter.get('/:conversationId/messages', async (req: Request, res: Response) 
       isMine: msg.senderId === userId,
     }));
 
+    Container.logger.info('Historial de mensajes consultado', {
+      context: 'CHAT:REST',
+      action: 'GET_MESSAGES',
+      statusCode: 200,
+      userId,
+      conversationId,
+      resultCount: data.length,
+    });
+
     return res.status(200).json({
       success: true,
       statusCode: 200,
       data,
     });
   } catch (error: any) {
+    Container.logger.error('Error al obtener los mensajes', error, {
+      context: 'CHAT:REST',
+      action: 'GET_MESSAGES',
+      statusCode: 500,
+      userId: req.user?.sub,
+      conversationId: String(req.params.conversationId ?? ''),
+    });
     return res.status(500).json({
       success: false,
       statusCode: 500,
@@ -433,6 +546,13 @@ chatRouter.post('/:conversationId/messages', async (req: Request, res: Response)
       : null;
 
     if (!rawContent && !attachmentUrl) {
+      Container.logger.warn('Intento de enviar mensaje vacío', {
+        context: 'CHAT:REST',
+        action: 'SEND_MESSAGE',
+        statusCode: 400,
+        userId,
+        conversationId,
+      });
       return res.status(400).json({
         success: false,
         statusCode: 400,
@@ -441,6 +561,14 @@ chatRouter.post('/:conversationId/messages', async (req: Request, res: Response)
     }
 
     if (rawContent.length > 2000) {
+      Container.logger.warn('Mensaje supera máximo permitido de 2000 caracteres', {
+        context: 'CHAT:REST',
+        action: 'SEND_MESSAGE',
+        statusCode: 400,
+        userId,
+        conversationId,
+        contentLength: rawContent.length,
+      });
       return res.status(400).json({
         success: false,
         statusCode: 400,
@@ -492,12 +620,29 @@ chatRouter.post('/:conversationId/messages', async (req: Request, res: Response)
       Container.realtimeServer.emitMessageNotification(recipientId, payload);
     }
 
+    Container.logger.info('Mensaje enviado y emitido en tiempo real', {
+      context: 'CHAT:REST',
+      action: 'SEND_MESSAGE',
+      statusCode: 201,
+      userId,
+      conversationId,
+      messageId: created.id,
+      hasAttachment: Boolean(attachmentUrl),
+    });
+
     return res.status(201).json({
       success: true,
       statusCode: 201,
       data: payload,
     });
   } catch (error: any) {
+    Container.logger.error('Error al enviar el mensaje', error, {
+      context: 'CHAT:REST',
+      action: 'SEND_MESSAGE',
+      statusCode: 500,
+      userId: req.user?.sub,
+      conversationId: String(req.params.conversationId ?? ''),
+    });
     return res.status(500).json({
       success: false,
       statusCode: 500,
@@ -532,6 +677,13 @@ chatRouter.post(
       }
 
       if (!req.file) {
+        Container.logger.warn('Archivo de imagen requerido para adjunto', {
+          context: 'CHAT:REST',
+          action: 'UPLOAD_ATTACHMENT',
+          statusCode: 400,
+          userId,
+          conversationId,
+        });
         return res.status(400).json({ success: false, statusCode: 400, message: 'Archivo de imagen requerido.' });
       }
 
@@ -577,10 +729,19 @@ chatRouter.post(
       };
 
       Container.realtimeServer.emitNewMessage(conversationId, payload);
-    const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
-    if (recipientId && recipientId !== userId) {
-      Container.realtimeServer.emitMessageNotification(recipientId, payload);
-    }
+      const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
+      if (recipientId && recipientId !== userId) {
+        Container.realtimeServer.emitMessageNotification(recipientId, payload);
+      }
+
+      Container.logger.info('Archivo adjunto subido y emitido en tiempo real', {
+        context: 'CHAT:REST',
+        action: 'UPLOAD_ATTACHMENT',
+        statusCode: 201,
+        userId,
+        conversationId,
+        messageId: created.id,
+      });
 
       return res.status(201).json({
         success: true,
@@ -588,6 +749,13 @@ chatRouter.post(
         data: payload,
       });
     } catch (error: any) {
+      Container.logger.error('Error al subir la imagen en el chat', error, {
+        context: 'CHAT:REST',
+        action: 'UPLOAD_ATTACHMENT',
+        statusCode: 500,
+        userId: req.user?.sub,
+        conversationId: String(req.params.conversationId ?? ''),
+      });
       return res.status(500).json({
         success: false,
         statusCode: 500,
@@ -631,12 +799,28 @@ chatRouter.patch('/:conversationId/read', async (req: Request, res: Response) =>
       },
     });
 
+    Container.logger.info('Mensajes marcados como leídos', {
+      context: 'CHAT:REST',
+      action: 'MARK_READ',
+      statusCode: 200,
+      userId,
+      conversationId,
+      updatedCount: result.count,
+    });
+
     return res.status(200).json({
       success: true,
       statusCode: 200,
       data: { updatedCount: result.count },
     });
   } catch (error: any) {
+    Container.logger.error('Error al marcar mensajes como leídos', error, {
+      context: 'CHAT:REST',
+      action: 'MARK_READ',
+      statusCode: 500,
+      userId: req.user?.sub,
+      conversationId: String(req.params.conversationId ?? ''),
+    });
     return res.status(500).json({
       success: false,
       statusCode: 500,

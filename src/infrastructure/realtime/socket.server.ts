@@ -7,6 +7,7 @@ import {  CONTRACT_SOCKET_EVENTS,ContractAccessValidator,ContractStatusChangedEv
 } from '../../application/interfaces/realtime-notifier.interface.js';
 import { env } from '../../config/env.js';
 import { prisma } from '../persistence/prisma/prisma.client.js';
+import { ILogger } from '../../application/interfaces/logger.interface.js';
 
 // Esta es una expresion regular para validar que sea un UUID que es el identificador de las tablas 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -172,6 +173,7 @@ export const defaultContractAccessValidator: ContractAccessValidator = async (
 export interface RealtimeSocketServerOptions {
   canAccessContract?: ContractAccessValidator;
   corsOrigins?: string[];
+  logger?: ILogger;
 }
 
 /**
@@ -181,12 +183,13 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
   private io: Server | null = null;
   private readonly canAccessContract: ContractAccessValidator;
   private readonly corsOrigins: string[];
+  private readonly logger?: ILogger;
 
   constructor(
     private readonly jwtTokenGenerator: IJwtTokenGenerator,
     options: RealtimeSocketServerOptions = {}
   ) {
-    // 
+    this.logger = options.logger;
     this.canAccessContract = options.canAccessContract ?? defaultContractAccessValidator;
     this.corsOrigins = options.corsOrigins ?? [
       'http://localhost:5173',
@@ -220,6 +223,11 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
     io.use((socket, next) => {
       const token = extractHandshakeToken(socket);
       if (!token) {
+        this.logger?.warn('Intento de conexión WebSocket sin token JWT', {
+          context: 'CHAT:SOCKET',
+          action: 'HANDSHAKE',
+          statusCode: 401,
+        });
         next(new Error('NoAutorizado: Token JWT requerido en el handshake.'));
         return;
       }
@@ -231,11 +239,21 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Token JWT inválido o expirado.';
+        this.logger?.warn(`Token JWT inválido en WebSocket: ${message}`, {
+          context: 'CHAT:SOCKET',
+          action: 'HANDSHAKE',
+          statusCode: 401,
+        });
         next(new Error(`NoAutorizado: ${message}`));
       }
     });
 
     io.on('connection', (socket: AuthenticatedSocket) => {
+      this.logger?.info('Cliente conectado vía WebSocket', {
+        context: 'CHAT:SOCKET',
+        action: 'CONNECT',
+        userId: socket.data.user?.sub,
+      });
       this.registerSocketHandlers(io, socket);
     });
 
@@ -260,6 +278,13 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
       const authorized = await this.canAccessContract(user.sub, contractId, user.role);
       if (!authorized) {
         const errorMsg = 'No autorizado para suscribirse a este contrato.';
+        this.logger?.warn('Acceso denegado a sala de contrato en WebSocket', {
+          context: 'CHAT:SOCKET',
+          action: 'JOIN_ROOM',
+          statusCode: 403,
+          userId: user.sub,
+          contractId,
+        });
         ack?.({ ok: false, error: errorMsg });
         socket.emit('socket_error', { contractId, message: errorMsg });
         return;
@@ -267,6 +292,13 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
       const room = getContractRoom(contractId);
       await socket.join(room);
+      this.logger?.info('Usuario suscrito a sala de contrato en tiempo real', {
+        context: 'CHAT:SOCKET',
+        action: 'JOIN_ROOM',
+        statusCode: 200,
+        userId: user.sub,
+        contractId,
+      });
       ack?.({ ok: true, room });
     };
 
@@ -383,6 +415,11 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
     // Limpieza explícita de listeners para evitar fugas de memoria al desconectar
     socket.on('disconnect', () => {
+      this.logger?.info('Cliente WebSocket desconectado', {
+        context: 'CHAT:SOCKET',
+        action: 'DISCONNECT',
+        userId: user.sub,
+      });
       socket.removeAllListeners();
     });
   }
