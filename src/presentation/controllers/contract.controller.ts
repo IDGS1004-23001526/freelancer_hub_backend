@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ContractEscrowUseCase } from '../../application/use-cases/contract-escrow.use-case.js';
 import { InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
+import { Container } from '../../container.js';
 
 export class ContractController {
     constructor(private readonly contractEscrowUseCase: ContractEscrowUseCase) {}
@@ -14,6 +15,15 @@ export class ContractController {
                 claims.sub,
                 req.body.proposalId
             );
+
+            Container.logger.info('Contrato formalizado a partir de propuesta', {
+                context: 'CONTRACT',
+                action: 'CREATE_CONTRACT',
+                statusCode: 201,
+                userId: claims.sub,
+                proposalId: req.body.proposalId,
+                contractId: result?.id,
+            });
 
             res.status(201).json({
                 success: true,
@@ -36,6 +46,14 @@ export class ContractController {
                 claims.sub,
                 contractId
             );
+
+            Container.logger.info('Fondos retenidos en custodia Escrow', {
+                context: 'ESCROW',
+                action: 'FUND_CONTRACT',
+                statusCode: 200,
+                userId: claims.sub,
+                contractId,
+            });
 
             res.status(200).json({
                 success: true,
@@ -61,6 +79,15 @@ export class ContractController {
                 contractId,
                 milestoneId
             );
+
+            Container.logger.info('Avance de hito / contrato procesado', {
+                context: 'MILESTONE',
+                action: 'ADVANCE_MILESTONE',
+                statusCode: 200,
+                userId: claims.sub,
+                contractId,
+                milestoneId,
+            });
 
             res.status(200).json({
                 success: true,

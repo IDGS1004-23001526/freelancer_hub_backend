@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { CreateProjectUseCase } from '../../application/use-cases/create-project.use-case.js';
 import { GetProjectsUseCase } from '../../application/use-cases/get-projects.use-case.js';
 import { InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
+import { Container } from '../../container.js';
 
 export class ProjectController {
     constructor(
@@ -23,6 +24,13 @@ export class ProjectController {
                 skills: query.skills,
                 page: query.page,
                 limit: query.limit,
+            });
+
+            Container.logger.info('Feed de convocatorias consultado', {
+                context: 'PROJECT',
+                action: 'GET_FEED',
+                statusCode: 200,
+                resultCount: result.projects.length,
             });
 
             res.status(200).json({
@@ -48,6 +56,14 @@ export class ProjectController {
             }
 
             const proyecto = await this.createProjectUseCase.execute(claims.sub, claims.role, req.body);
+
+            Container.logger.info('Convocatoria creada exitosamente', {
+                context: 'PROJECT',
+                action: 'CREATE_PROJECT',
+                statusCode: 201,
+                userId: claims.sub,
+                projectId: proyecto.id,
+            });
 
             res.status(201).json({
                 success: true,

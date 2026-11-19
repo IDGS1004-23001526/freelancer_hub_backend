@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { WalletUseCase } from '../../application/use-cases/wallet.use-case.js';
 import { InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
+import { Container } from '../../container.js';
 
 export class WalletController {
     constructor(private readonly walletUseCase: WalletUseCase) {}
@@ -33,6 +34,14 @@ export class WalletController {
                 req.body.description
             );
 
+            Container.logger.info('Abono acreditado a billetera digital', {
+                context: 'WALLET',
+                action: 'DEPOSIT_FUNDS',
+                statusCode: 200,
+                userId: claims.sub,
+                amount: req.body.amount,
+            });
+
             res.status(200).json({
                 success: true,
                 statusCode: 200,
@@ -54,6 +63,14 @@ export class WalletController {
                 req.body.amount,
                 req.body.clabeAccount
             );
+
+            Container.logger.info('Retiro de fondos procesado', {
+                context: 'WALLET',
+                action: 'WITHDRAW_FUNDS',
+                statusCode: 200,
+                userId: claims.sub,
+                amount: req.body.amount,
+            });
 
             res.status(200).json({
                 success: true,

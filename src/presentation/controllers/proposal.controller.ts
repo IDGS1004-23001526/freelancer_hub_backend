@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { SubmitProposalUseCase } from '../../application/use-cases/submit-proposal.use-case.js';
 import { InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
 import { IProposalRepository } from '../../domain/repositories/proposal.repository.interface.js';
+import { Container } from '../../container.js';
 
 export class ProposalController {
     constructor(
@@ -22,6 +23,15 @@ export class ProposalController {
                 req.body
             );
 
+            Container.logger.info('Propuesta económica y cotización de hitos registrada', {
+                context: 'PROPOSAL',
+                action: 'SUBMIT_PROPOSAL',
+                statusCode: 201,
+                userId: claims.sub,
+                proposalId: result?.id,
+                projectId: req.body?.projectId,
+            });
+
             res.status(201).json({
                 success: true,
                 statusCode: 201,
@@ -37,6 +47,14 @@ export class ProposalController {
         try {
             const projectId = String(req.params.projectId);
             const proposals = await this.proposalRepository.findByProjectId(projectId);
+
+            Container.logger.info('Propuestas del proyecto consultadas', {
+                context: 'PROPOSAL',
+                action: 'GET_PROPOSALS',
+                statusCode: 200,
+                projectId,
+                resultCount: proposals.length,
+            });
 
             res.status(200).json({
                 success: true,
