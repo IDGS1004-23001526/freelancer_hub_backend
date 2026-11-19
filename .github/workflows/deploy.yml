@@ -67,6 +67,10 @@ jobs:
             User $USER
             ProxyCommand cloudflared access ssh --hostname %h
             StrictHostKeyChecking no
+            ServerAliveInterval 15
+            ServerAliveCountMax 10
+            TCPKeepAlive yes
+            ConnectTimeout 60
           SSH_EOF
           
-          ssh -i ~/.ssh/github_key servidor_secreto "cd ~/freelancer_hub_backend && ./deploy.sh"
+          ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=10 -i ~/.ssh/github_key servidor_secreto "cd ~/freelancer_hub_backend && ./deploy.sh"
