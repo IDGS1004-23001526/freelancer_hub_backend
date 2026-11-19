@@ -799,6 +799,18 @@ chatRouter.patch('/:conversationId/read', async (req: Request, res: Response) =>
       },
     });
 
+    // Notificar en tiempo real a la sala del contrato / conversación para actualizar checks de lectura
+    Container.realtimeServer
+      .getServer()
+      ?.to(`room:${conversationId}`)
+      .emit('message_read', {
+        contractId: conversationId,
+        conversationId,
+        readerId: userId,
+        status: 'read',
+        readAt: new Date().toISOString(),
+      });
+
     Container.logger.info('Mensajes marcados como leídos', {
       context: 'CHAT:REST',
       action: 'MARK_READ',

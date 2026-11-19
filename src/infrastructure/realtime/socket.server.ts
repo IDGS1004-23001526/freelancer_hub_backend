@@ -371,6 +371,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
       const payload: NewMessageEventPayload = {
         id: messageId,
         contractId,
+        conversationId: contractId,
         senderId: user.sub,
         senderRole: user.role,
         content,
@@ -407,8 +408,10 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
       io.to(room).emit('message_read', {
         contractId,
+        conversationId: contractId,
         messageId: raw?.messageId,
         readerId: user.sub,
+        status: 'read',
         readAt: new Date().toISOString(),
       });
     });
