@@ -1,15 +1,52 @@
-name: Deploy FreelancerHub Backend
+name: CI/CD Pipeline - FreelancerHub Backend
 
 on:
   push:
     branches:
       - main
+      - RV
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  deploy:
+  test:
+    name: Quality Gate (TypeCheck and Automated Tests)
     runs-on: ubuntu-latest
+
     steps:
-      - name: Instalar Cloudflared para el túnel
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Generar Cliente de Prisma
+        run: pnpm prisma:generate
+
+      - name: Verificacion estricta de TypeScript
+        run: pnpm typecheck
+
+      - name: Ejecutar bateria completa de pruebas unitarias e integracion
+        run: pnpm test
+
+  deploy:
+    name: Despliegue a Produccion (Fedora Server)
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Instalar Cloudflared para el tunel
         run: |
           curl -L -o cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared.deb
