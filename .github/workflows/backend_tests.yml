@@ -1,0 +1,44 @@
+name: Backend Automated Scheduled Tests
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  push:
+    branches:
+      - main
+      - RV
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend-quality-gate:
+    name: Backend Unit, Integration & TypeCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Generar Cliente de Prisma
+        run: pnpm prisma:generate
+
+      - name: Verificacion estricta de TypeScript
+        run: pnpm typecheck
+
+      - name: Ejecutar bateria completa de pruebas unitarias e integracion
+        run: pnpm test
