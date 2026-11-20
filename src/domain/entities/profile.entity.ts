@@ -25,7 +25,8 @@ export class Profile {
     public professionalTitle?: string,
     public hourlyRate?: number,
     public skills: any[] = [],
-    public portfolioItems: PortfolioItem[] = []
+    public portfolioItems: PortfolioItem[] = [],
+    public location?: string
   ) {}
 
   public updateDetails(data: {
@@ -35,6 +36,7 @@ export class Profile {
     phone?: Phone | string;
     professionalTitle?: string;
     hourlyRate?: number;
+    location?: string;
   }): void {
     if (data.firstName !== undefined) this.firstName = data.firstName;
     if (data.lastName !== undefined) this.lastName = data.lastName;
@@ -42,6 +44,7 @@ export class Profile {
     if (data.phone !== undefined) this.phone = data.phone;
     if (data.professionalTitle !== undefined) this.professionalTitle = data.professionalTitle;
     if (data.hourlyRate !== undefined) this.hourlyRate = data.hourlyRate;
+    if (data.location !== undefined) this.location = data.location;
   }
 
   public updateAvatar(avatarUrl: string): void {

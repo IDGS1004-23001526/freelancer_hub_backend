@@ -31,6 +31,15 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
   const step2 = Boolean(profile.portfolioItems && profile.portfolioItems.length > 0);
   const step3 = Boolean(profile.skills && profile.skills.length > 0);
   const completed = [step1, step2, step3].filter(Boolean).length;
+  const percentage = Math.round((completed / 3) * 100);
+
+  Container.logger.info('Estado de onboarding de perfil consultado', {
+    context: 'PROFILE',
+    action: 'GET_ONBOARDING_STATUS',
+    statusCode: 200,
+    userId,
+    percentage,
+  });
 
   res.json({
     success: true,
@@ -38,7 +47,7 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
     data: {
       totalSteps: 3,
       completedSteps: completed,
-      percentage: Math.round((completed / 3) * 100),
+      percentage,
       isFullyCompleted: completed === 3,
       steps: [
         { id: 'professional_info', isCompleted: step1 },
@@ -65,6 +74,12 @@ profileRouter.get('/me', async (req: Request, res: Response) => {
   }
 
   if (!profile) {
+    Container.logger.info('Perfil propio consultado (vacío)', {
+      context: 'PROFILE',
+      action: 'GET_MY_PROFILE',
+      statusCode: 200,
+      userId,
+    });
     return res.json({
       success: true,
       statusCode: 200,
@@ -75,6 +90,13 @@ profileRouter.get('/me', async (req: Request, res: Response) => {
   const cleanSkills = (profile.skills || []).map((s: any) =>
     typeof s === 'string' ? s : s?.name || ''
   ).filter(Boolean);
+
+  Container.logger.info('Perfil propio consultado', {
+    context: 'PROFILE',
+    action: 'GET_MY_PROFILE',
+    statusCode: 200,
+    userId,
+  });
 
   res.json({
     success: true,
@@ -111,6 +133,14 @@ profileRouter.put('/professional-info', async (req: Request, res: Response) => {
   });
 
   await profileRepository.save(profile);
+
+  Container.logger.info('Información profesional del perfil actualizada', {
+    context: 'PROFILE',
+    action: 'UPDATE_PROFESSIONAL_INFO',
+    statusCode: 200,
+    userId,
+  });
+
   res.json({
     success: true,
     statusCode: 200,
@@ -141,19 +171,36 @@ profileRouter.post('/portfolio', async (req: Request, res: Response) => {
 
   profile.addPortfolioItem(newItem);
   await profileRepository.save(profile);
+
+  Container.logger.info('Nuevo ítem agregado al portafolio', {
+    context: 'PROFILE',
+    action: 'ADD_PORTFOLIO_ITEM',
+    statusCode: 201,
+    userId,
+    itemId: newItem.id,
+  });
+
   res.json({ success: true, statusCode: 201, data: newItem });
 });
 
 // 5. Eliminar ítem del portafolio
 profileRouter.delete('/portfolio/:itemId', async (req: Request, res: Response) => {
   const userId = req.user?.sub || 'default';
+  const itemId = String(req.params.itemId);
   const profile = await profileRepository.findByUserId(userId);
 
   if (profile) {
-    const itemId = String(req.params.itemId);
     profile.removePortfolioItem(itemId);
     await profileRepository.save(profile);
   }
+
+  Container.logger.info('Ítem eliminado del portafolio', {
+    context: 'PROFILE',
+    action: 'DELETE_PORTFOLIO_ITEM',
+    statusCode: 200,
+    userId,
+    itemId,
+  });
 
   res.json({ success: true, statusCode: 200, message: 'Eliminado correctamente' });
 });
@@ -167,8 +214,18 @@ profileRouter.put('/skills', async (req: Request, res: Response) => {
     profile = new Profile(userId, 'Usuario', 'Temporal');
   }
 
-  profile.setSkills(req.body.skills || []);
+  const skills = req.body.skills || [];
+  profile.setSkills(skills);
   await profileRepository.save(profile);
+
+  Container.logger.info('Habilidades técnicas del perfil actualizadas', {
+    context: 'PROFILE',
+    action: 'UPDATE_SKILLS',
+    statusCode: 200,
+    userId,
+    skillsCount: skills.length,
+  });
+
   res.json({ success: true, statusCode: 200, data: profile });
 });
 
@@ -180,10 +237,21 @@ profileRouter.post(
     try {
       const userId = req.user?.sub;
       if (!userId) {
+        Container.logger.warn('Intento de subida de avatar sin usuario autenticado', {
+          context: 'PROFILE',
+          action: 'UPLOAD_AVATAR_UNAUTHORIZED',
+          statusCode: 401,
+        });
         return res.status(401).json({ success: false, statusCode: 401, message: 'Usuario no autenticado' });
       }
 
       if (!req.file) {
+        Container.logger.warn('Intento de subida de avatar sin archivo', {
+          context: 'PROFILE',
+          action: 'UPLOAD_AVATAR_NO_FILE',
+          statusCode: 400,
+          userId,
+        });
         return res.status(400).json({ success: false, statusCode: 400, message: 'No se envió ningún archivo' });
       }
 
@@ -195,6 +263,14 @@ profileRouter.post(
 
       Container.realtimeServer.emitProfileUpdated(userId, { avatarUrl });
 
+      Container.logger.info('Avatar de perfil cargado y actualizado exitosamente', {
+        context: 'PROFILE',
+        action: 'UPLOAD_AVATAR',
+        statusCode: 200,
+        userId,
+        avatarUrl,
+      });
+
       res.status(200).json({
         success: true,
         statusCode: 200,
@@ -202,6 +278,13 @@ profileRouter.post(
         data: { avatarUrl },
       });
     } catch (error: any) {
+      Container.logger.error('Error al subir el avatar del usuario', error, {
+        context: 'PROFILE',
+        action: 'UPLOAD_AVATAR_ERROR',
+        statusCode: 500,
+        userId: req.user?.sub,
+      });
+
       res.status(500).json({
         success: false,
         statusCode: 500,
@@ -216,7 +299,23 @@ profileRouter.get('/:userId', async (req: Request, res: Response) => {
   const userId = String(req.params.userId);
   const profile = await profileRepository.findByUserId(userId);
   if (!profile) {
+    Container.logger.warn('Perfil público no encontrado', {
+      context: 'PROFILE',
+      action: 'GET_PUBLIC_PROFILE_NOT_FOUND',
+      statusCode: 404,
+      targetUserId: userId,
+      requesterUserId: req.user?.sub,
+    });
     return res.status(404).json({ success: false, statusCode: 404, message: 'Perfil no encontrado' });
   }
+
+  Container.logger.info('Perfil público consultado', {
+    context: 'PROFILE',
+    action: 'GET_PUBLIC_PROFILE',
+    statusCode: 200,
+    targetUserId: userId,
+    requesterUserId: req.user?.sub,
+  });
+
   res.json({ success: true, statusCode: 200, data: profile });
 });

@@ -7,6 +7,7 @@ import { RevokeSessionUseCase } from '../../application/use-cases/revoke-session
 import { IUserRepository } from '../../domain/repositories/user.repository.interface.js';
 import { toUserProfileDto } from '../../application/dtos/user-profile.dto.js';
 import { UserNotFoundException } from '../../domain/exceptions/domain.exception.js';
+import { Container } from '../../container.js';
 
 /**
  * Controlador de la API para Autenticación, Registro y Sesiones.
@@ -27,6 +28,16 @@ export class AuthController {
   public register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.registerUserUseCase.execute(req.body);
+
+      Container.logger.info('Nuevo usuario registrado exitosamente', {
+        context: 'AUTH',
+        action: 'REGISTER_USER',
+        statusCode: 201,
+        userId: resultado.user.id,
+        email: resultado.user.email,
+        role: resultado.user.role,
+      });
+
       res.status(201).json({
         success: true,
         statusCode: 201,
@@ -44,6 +55,16 @@ export class AuthController {
   public login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.authenticateUserUseCase.execute(req.body);
+
+      Container.logger.info('Autenticación de usuario exitosa', {
+        context: 'AUTH',
+        action: 'LOGIN_SUCCESS',
+        statusCode: 200,
+        userId: resultado.user.id,
+        email: resultado.user.email,
+        role: resultado.user.role,
+      });
+
       res.status(200).json({
         success: true,
         statusCode: 200,
@@ -61,6 +82,16 @@ export class AuthController {
   public googleAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.googleAuthUseCase.execute(req.body);
+
+      Container.logger.info('Autenticación federada con Google exitosa', {
+        context: 'AUTH',
+        action: 'GOOGLE_AUTH_SUCCESS',
+        statusCode: 200,
+        userId: resultado.user.id,
+        email: resultado.user.email,
+        role: resultado.user.role,
+      });
+
       res.status(200).json({
         success: true,
         statusCode: 200,
@@ -78,6 +109,14 @@ export class AuthController {
   public refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const resultado = await this.refreshSessionTokenUseCase.execute(req.body);
+
+      Container.logger.info('Sesión renovada y token rotado exitosamente', {
+        context: 'AUTH',
+        action: 'TOKEN_ROTATED',
+        statusCode: 200,
+        userId: resultado.user.id,
+      });
+
       res.status(200).json({
         success: true,
         statusCode: 200,
@@ -95,6 +134,14 @@ export class AuthController {
   public logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.revokeSessionUseCase.execute(req.body);
+
+      Container.logger.info('Cierre de sesión y revocación de token exitosa', {
+        context: 'AUTH',
+        action: 'LOGOUT_SUCCESS',
+        statusCode: 200,
+        userId: req.user?.sub,
+      });
+
       res.status(200).json({
         success: true,
         statusCode: 200,
@@ -119,6 +166,13 @@ export class AuthController {
       if (!user) {
         throw new UserNotFoundException(userId);
       }
+
+      Container.logger.info('Perfil del usuario autenticado consultado', {
+        context: 'AUTH',
+        action: 'GET_ME',
+        statusCode: 200,
+        userId,
+      });
 
       res.status(200).json({
         success: true,

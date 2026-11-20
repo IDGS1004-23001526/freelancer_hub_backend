@@ -13,6 +13,15 @@ export class WalletController {
 
             const result = await this.walletUseCase.getWallet(claims.sub);
 
+            Container.logger.info('Balance e historial de billetera digital consultado', {
+                context: 'WALLET',
+                action: 'GET_WALLET',
+                statusCode: 200,
+                userId: claims.sub,
+                availableBalance: result?.availableBalance,
+                escrowLocked: result?.escrowLocked,
+            });
+
             res.status(200).json({
                 success: true,
                 statusCode: 200,
@@ -94,6 +103,17 @@ export class WalletController {
                 req.body.contractId,
                 req.body.description
             );
+
+            Container.logger.info('Pago Escrow liberado y acreditado con retención de comisión (10%)', {
+                context: 'WALLET',
+                action: 'CREDIT_ESCROW_FEE',
+                statusCode: 200,
+                userId: claims.sub,
+                freelancerId: req.body.freelancerId,
+                contractId: req.body.contractId,
+                grossAmount: req.body.grossAmount,
+                updatedAvailableBalance: result?.availableBalance,
+            });
 
             res.status(200).json({
                 success: true,

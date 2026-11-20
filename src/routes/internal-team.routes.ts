@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../infrastructure/persistence/prisma/prisma.client.js';
+import { Container } from '../container.js';
 
 export const internalTeamRouter = Router();
 
@@ -23,6 +24,14 @@ internalTeamRouter.get('/members', async (req: Request, res: Response) => {
       createdAt: m.createdAt,
     }));
 
+    Container.logger.info('Listado de miembros del equipo consultado', {
+      context: 'INTERNAL_TEAM',
+      action: 'GET_MEMBERS',
+      statusCode: 200,
+      isPaulo,
+      count: members.length,
+    });
+
     res.json({
       success: true,
       statusCode: 200,
@@ -30,7 +39,12 @@ internalTeamRouter.get('/members', async (req: Request, res: Response) => {
       isPaulo,
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    Container.logger.error('Error al consultar miembros del equipo', error, {
+      context: 'INTERNAL_TEAM',
+      action: 'GET_MEMBERS_ERROR',
+      statusCode: 500,
+    });
+    res.status(500).json({ success: false, statusCode: 500, message: error.message });
   }
 });
 
@@ -40,12 +54,23 @@ internalTeamRouter.post('/auth', async (req: Request, res: Response) => {
     const { name, password } = req.body;
 
     if (!name || typeof name !== 'string') {
-      res.status(400).json({ success: false, message: 'El nombre es obligatorio.' });
+      Container.logger.warn('Intento de autenticación de equipo sin nombre', {
+        context: 'INTERNAL_TEAM',
+        action: 'AUTH_NO_NAME',
+        statusCode: 400,
+      });
+      res.status(400).json({ success: false, statusCode: 400, message: 'El nombre es obligatorio.' });
       return;
     }
 
     if (!password || typeof password !== 'string' || password.length < 3) {
-      res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 3 caracteres.' });
+      Container.logger.warn('Intento de autenticación de equipo con contraseña corta', {
+        context: 'INTERNAL_TEAM',
+        action: 'AUTH_SHORT_PASSWORD',
+        statusCode: 400,
+        member: name,
+      });
+      res.status(400).json({ success: false, statusCode: 400, message: 'La contraseña debe tener al menos 3 caracteres.' });
       return;
     }
 
@@ -64,6 +89,15 @@ internalTeamRouter.post('/auth', async (req: Request, res: Response) => {
         },
       });
 
+      Container.logger.info('Nuevo miembro del equipo registrado', {
+        context: 'INTERNAL_TEAM',
+        action: 'MEMBER_REGISTERED',
+        statusCode: 201,
+        memberId: member.id,
+        name: member.name,
+        role: member.role,
+      });
+
       res.status(201).json({
         success: true,
         statusCode: 201,
@@ -79,6 +113,12 @@ internalTeamRouter.post('/auth', async (req: Request, res: Response) => {
 
     // Caso 2: El miembro ya existe -> Validar contraseña ingresada
     if (member.password !== password.trim()) {
+      Container.logger.warn('Contraseña incorrecta para miembro del equipo', {
+        context: 'INTERNAL_TEAM',
+        action: 'AUTH_INVALID_PASSWORD',
+        statusCode: 401,
+        name: member.name,
+      });
       res.status(401).json({
         success: false,
         statusCode: 401,
@@ -86,6 +126,15 @@ internalTeamRouter.post('/auth', async (req: Request, res: Response) => {
       });
       return;
     }
+
+    Container.logger.info('Miembro del equipo autenticado exitosamente', {
+      context: 'INTERNAL_TEAM',
+      action: 'AUTH_SUCCESS',
+      statusCode: 200,
+      memberId: member.id,
+      name: member.name,
+      role: member.role,
+    });
 
     res.json({
       success: true,
@@ -98,6 +147,11 @@ internalTeamRouter.post('/auth', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    Container.logger.error('Error al autenticar miembro del equipo', error, {
+      context: 'INTERNAL_TEAM',
+      action: 'AUTH_ERROR',
+      statusCode: 500,
+    });
+    res.status(500).json({ success: false, statusCode: 500, message: error.message });
   }
 });

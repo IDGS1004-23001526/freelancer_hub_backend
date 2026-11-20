@@ -14,19 +14,27 @@ export class UpdateProfileUseCase {
     let profile = await this.profileRepository.findByUserId(userId);
 
     // 2. Instanciamos los Value Objects y Entidades a partir de los datos crudos (DTO).
-    let phone: Phone | undefined;
+    let phone: Phone | string | undefined;
     if (data.phone) {
       try {
         const sanitizedPhone = typeof data.phone === 'string' ? data.phone.replace(/[^\d+]/g, '') : String(data.phone);
         phone = Phone.create(sanitizedPhone);
       } catch {
-        phone = undefined;
+        phone = typeof data.phone === 'string' ? data.phone.trim() : String(data.phone);
       }
     }
-    const skills = data.skills?.map((s: any) => new Skill(s.id, s.name));
+    const skills = Array.isArray(data.skills)
+      ? data.skills.map((s: any) => {
+          if (typeof s === 'string') return new Skill(s.trim(), s.trim());
+          const name = (s?.name || s?.title || '').trim();
+          const id = (s?.id || name).trim();
+          return new Skill(id, name);
+        }).filter((s: Skill) => Boolean(s.name))
+      : undefined;
     const firstName = data.firstName ?? data.first_name ?? '';
     const lastName = data.lastName ?? data.last_name ?? '';
     const hourlyRate = data.hourlyRate !== undefined && data.hourlyRate !== null ? Number(data.hourlyRate) : undefined;
+    const location = data.location ?? data.ubicacion ?? undefined;
 
     if (!profile) {
       // 3a. Flujo de Creación (Insert): Instanciamos un nuevo perfil
@@ -39,7 +47,9 @@ export class UpdateProfileUseCase {
         data.avatarUrl,
         data.professionalTitle,
         hourlyRate,
-        skills ?? []
+        skills ?? [],
+        [],
+        location
       );
     } else {
       // 3b. Flujo de Actualización (Update): Usamos el método de dominio para mutar el estado
@@ -50,6 +60,7 @@ export class UpdateProfileUseCase {
         phone,
         professionalTitle: data.professionalTitle,
         hourlyRate,
+        location,
       });
 
       if (skills !== undefined) {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../infrastructure/persistence/prisma/prisma.client.js';
+import { Container } from '../container.js';
 
 export const internalTasksRouter = Router();
 
@@ -27,6 +28,15 @@ internalTasksRouter.get('/', async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
+    Container.logger.info('Tablero de tareas internas consultado', {
+      context: 'INTERNAL_TASKS',
+      action: 'LIST_TASKS',
+      statusCode: 200,
+      resultCount: tasks.length,
+      filterAssignee: assignee,
+      filterStatus: status,
+    });
+
     res.json({
       success: true,
       statusCode: 200,
@@ -37,6 +47,11 @@ internalTasksRouter.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
+    Container.logger.error('Error al obtener tareas internas', error, {
+      context: 'INTERNAL_TASKS',
+      action: 'LIST_TASKS_ERROR',
+      statusCode: 500,
+    });
     res.status(500).json({
       success: false,
       statusCode: 500,
@@ -54,6 +69,11 @@ internalTasksRouter.post('/', async (req: Request, res: Response) => {
     const { title, description, assignee, priority, dueDate, createdBy } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      Container.logger.warn('Intento de crear tarea interna sin título', {
+        context: 'INTERNAL_TASKS',
+        action: 'CREATE_TASK_NO_TITLE',
+        statusCode: 400,
+      });
       res.status(400).json({
         success: false,
         statusCode: 400,
@@ -63,6 +83,11 @@ internalTasksRouter.post('/', async (req: Request, res: Response) => {
     }
 
     if (!assignee || typeof assignee !== 'string') {
+      Container.logger.warn('Intento de crear tarea interna sin asignado', {
+        context: 'INTERNAL_TASKS',
+        action: 'CREATE_TASK_NO_ASSIGNEE',
+        statusCode: 400,
+      });
       res.status(400).json({
         success: false,
         statusCode: 400,
@@ -82,6 +107,15 @@ internalTasksRouter.post('/', async (req: Request, res: Response) => {
       },
     });
 
+    Container.logger.info('Nueva tarea interna creada y asignada', {
+      context: 'INTERNAL_TASKS',
+      action: 'CREATE_TASK',
+      statusCode: 201,
+      taskId: task.id,
+      assignee: task.assignee,
+      priority: task.priority,
+    });
+
     res.status(201).json({
       success: true,
       statusCode: 201,
@@ -89,6 +123,11 @@ internalTasksRouter.post('/', async (req: Request, res: Response) => {
       data: task,
     });
   } catch (error: any) {
+    Container.logger.error('Error al crear tarea interna', error, {
+      context: 'INTERNAL_TASKS',
+      action: 'CREATE_TASK_ERROR',
+      statusCode: 500,
+    });
     res.status(500).json({
       success: false,
       statusCode: 500,
@@ -118,6 +157,15 @@ internalTasksRouter.patch('/:id', async (req: Request, res: Response) => {
       data,
     });
 
+    Container.logger.info('Tarea interna actualizada (estado/Kanban)', {
+      context: 'INTERNAL_TASKS',
+      action: 'UPDATE_TASK',
+      statusCode: 200,
+      taskId: id,
+      newStatus: status,
+      newAssignee: assignee,
+    });
+
     res.json({
       success: true,
       statusCode: 200,
@@ -125,6 +173,12 @@ internalTasksRouter.patch('/:id', async (req: Request, res: Response) => {
       data: updatedTask,
     });
   } catch (error: any) {
+    Container.logger.error('Error al actualizar tarea interna', error, {
+      context: 'INTERNAL_TASKS',
+      action: 'UPDATE_TASK_ERROR',
+      statusCode: 500,
+      taskId: req.params.id,
+    });
     res.status(500).json({
       success: false,
       statusCode: 500,
@@ -145,12 +199,25 @@ internalTasksRouter.delete('/:id', async (req: Request, res: Response) => {
       where: { id },
     });
 
+    Container.logger.info('Tarea interna eliminada', {
+      context: 'INTERNAL_TASKS',
+      action: 'DELETE_TASK',
+      statusCode: 200,
+      taskId: id,
+    });
+
     res.json({
       success: true,
       statusCode: 200,
       message: 'Tarea eliminada correctamente.',
     });
   } catch (error: any) {
+    Container.logger.error('Error al eliminar tarea interna', error, {
+      context: 'INTERNAL_TASKS',
+      action: 'DELETE_TASK_ERROR',
+      statusCode: 500,
+      taskId: req.params.id,
+    });
     res.status(500).json({
       success: false,
       statusCode: 500,

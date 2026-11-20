@@ -33,6 +33,7 @@ interface SendMessagePayload {
   conversationId?: string;
   roomId?: string;
   content?: string;
+  attachmentUrl?: string | null;
 }
 
 // respuesta de ark que es nos permite recepcion de errores y exitos
@@ -341,6 +342,10 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
       let messageId = typeof raw?.id === 'string' && raw.id.trim() ? raw.id.trim() : crypto.randomUUID();
       let createdAt = new Date().toISOString();
 
+      const rawAttachment = typeof raw?.attachmentUrl === 'string' && raw.attachmentUrl.trim()
+        ? raw.attachmentUrl.trim()
+        : null;
+
       try {
         if (UUID_REGEX.test(contractId)) {
           const conv = await prisma.conversation.findUnique({
@@ -354,6 +359,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
                 conversationId: contractId,
                 senderId: user.sub,
                 content,
+                attachmentUrl: rawAttachment,
               },
             });
             await prisma.conversation.update({
@@ -362,6 +368,20 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
             });
             messageId = saved.id;
             createdAt = saved.createdAt.toISOString();
+
+            const recipientId = conv.clientId === user.sub ? conv.freelancerId : conv.clientId;
+            if (recipientId && recipientId !== user.sub) {
+              io.to(`user:${recipientId}`).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE_NOTIFICATION, {
+                id: messageId,
+                contractId,
+                conversationId: contractId,
+                senderId: user.sub,
+                senderRole: user.role,
+                content,
+                attachmentUrl: rawAttachment,
+                createdAt,
+              });
+            }
           }
         }
       } catch {
@@ -375,6 +395,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
         senderId: user.sub,
         senderRole: user.role,
         content,
+        attachmentUrl: rawAttachment,
         createdAt,
       };
 

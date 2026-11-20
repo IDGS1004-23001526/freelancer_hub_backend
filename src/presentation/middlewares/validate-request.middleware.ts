@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
+import { Container } from '../../container.js';
 
 /**
  * Middleware para validar el cuerpo (body) de la petición contra un esquema de Zod.
@@ -15,6 +16,16 @@ export const validateBody = (schema: ZodSchema) => {
           campo: err.path.join('.'),
           mensaje: err.message,
         }));
+
+        Container.logger.warn('Validación de esquema Zod fallida en cuerpo de petición', {
+          context: 'VALIDATION',
+          action: 'ZOD_BODY_ERROR',
+          statusCode: 400,
+          userId: (req as any).user?.sub,
+          detalles: erroresFormateados,
+          path: req.originalUrl || req.url,
+          method: req.method,
+        });
 
         res.status(400).json({
           success: false,
@@ -44,6 +55,16 @@ export const validateQuery = (schema: ZodSchema) => {
           campo: err.path.join('.'),
           mensaje: err.message,
         }));
+
+        Container.logger.warn('Validación de esquema Zod fallida en parámetros de consulta', {
+          context: 'VALIDATION',
+          action: 'ZOD_QUERY_ERROR',
+          statusCode: 400,
+          userId: (req as any).user?.sub,
+          detalles: erroresFormateados,
+          path: req.originalUrl || req.url,
+          method: req.method,
+        });
 
         res.status(400).json({
           success: false,

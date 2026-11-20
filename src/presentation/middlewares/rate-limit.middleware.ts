@@ -13,6 +13,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { Container } from '../../container.js';
 
 interface RateLimitRecord {
     count: number;
@@ -60,6 +61,19 @@ export const createRateLimitMiddleware = (options: RateLimitOptions) => {
 
         if (record.count >= maxRequests) {
             const retryAfterSeconds = Math.ceil((record.resetTime - now) / 1000);
+
+            Container.logger.warn(`Límite de peticiones alcanzado (${keyPrefix})`, {
+                context: 'SECURITY:RATE_LIMIT',
+                action: 'LIMIT_EXCEEDED',
+                statusCode: 429,
+                userId: req.user?.sub,
+                clientIdentifier,
+                keyPrefix,
+                maxRequests,
+                retryAfterSeconds,
+                path: req.originalUrl || req.url,
+                method: req.method,
+            });
 
             res.setHeader('Retry-After', String(retryAfterSeconds));
             res.setHeader('X-RateLimit-Limit', String(maxRequests));

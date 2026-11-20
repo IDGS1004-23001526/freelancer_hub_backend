@@ -105,6 +105,14 @@ export class ContractController {
             const contractId = String(req.params.id);
             const result = await this.contractEscrowUseCase.getById(contractId);
 
+            Container.logger.info('Detalle de contrato consultado', {
+                context: 'CONTRACT',
+                action: 'GET_CONTRACT',
+                statusCode: 200,
+                contractId,
+                userId: req.user?.sub,
+            });
+
             res.status(200).json({
                 success: true,
                 statusCode: 200,
@@ -121,6 +129,14 @@ export class ContractController {
             if (!claims) throw new InvalidTokenException();
 
             const result = await this.contractEscrowUseCase.listForUser(claims.sub);
+
+            Container.logger.info('Listado de contratos del usuario consultado', {
+                context: 'CONTRACT',
+                action: 'LIST_CONTRACTS',
+                statusCode: 200,
+                userId: claims.sub,
+                resultCount: result.length,
+            });
 
             res.status(200).json({
                 success: true,
