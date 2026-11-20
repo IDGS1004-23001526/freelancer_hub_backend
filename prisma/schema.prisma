@@ -598,6 +598,9 @@ model Contract {
   freelancer   User                @relation("FreelancerContracts", fields: [freelancerId], references: [id], onDelete: Cascade)
   milestones   ContractMilestone[]
 
+  changeRequests ContractChangeRequest[]
+  versions       ContractVersion[]
+
   @@index([projectId])
   @@index([clientId])
   @@index([freelancerId])
@@ -671,4 +674,69 @@ model WalletTransaction {
   @@index([walletId, createdAt(sort: Desc)])
   @@index([type])
   @@map("wallet_transactions")
+}
+
+// ----------------------------------------------------------------------------
+// MODULO DE REGULACIÓN DE ALCANCE - TRIÁNGULO DE HIERRO (FLH-BE-SCOPE / HU-08)
+// ----------------------------------------------------------------------------
+
+enum ChangeRequestStatus {
+  PENDING   // Esperando confirmación/firma de ambas partes
+  APPROVED  // Aprobada por cliente y freelancer -> contrato actualizado
+  REJECTED  // Rechazada por alguna de las partes
+}
+
+model ContractChangeRequest {
+  id                  String              @id @default(uuid()) @db.Uuid
+  contractId          String              @map("contract_id") @db.Uuid
+  requestedById       String              @map("requested_by_id") @db.Uuid
+  title               String              @db.VarChar(150)
+  description         String              @db.Text
+
+  // Impacto calculado por el Triángulo de Hierro
+  baseAmountSnapshot  Decimal             @map("base_amount_snapshot") @db.Decimal(12, 2)
+  baseDaysSnapshot    Int                 @map("base_days_snapshot")
+  addedDeliverables   Json                @map("added_deliverables") // Array de entregables solicitados
+  complexityFactor    Float               @default(1.0) @map("complexity_factor")
+  suggestedAddedDays  Int                 @map("suggested_added_days")
+  suggestedAddedCost  Decimal             @map("suggested_added_cost") @db.Decimal(12, 2)
+  dailyRateApplied    Decimal             @map("daily_rate_applied") @db.Decimal(12, 2)
+
+  // Flujo de doble firma / confirmación digital
+  clientApproved      Boolean             @default(false) @map("client_approved")
+  clientSignedAt      DateTime?           @map("client_signed_at") @db.Timestamptz(6)
+  clientSignature     String?             @map("client_signature") @db.VarChar(128)
+  freelancerApproved  Boolean             @default(false) @map("freelancer_approved")
+  freelancerSignedAt  DateTime?           @map("freelancer_signed_at") @db.Timestamptz(6)
+  freelancerSignature String?             @map("freelancer_signature") @db.VarChar(128)
+
+  status              ChangeRequestStatus @default(PENDING)
+  resolvedAt          DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contract            Contract            @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([status])
+  @@map("contract_change_requests")
+}
+
+model ContractVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  contractId      String   @map("contract_id") @db.Uuid
+  versionNumber   Int      @map("version_number")
+  changeRequestId String?  @map("change_request_id") @db.Uuid
+  createdById     String   @map("created_by_id") @db.Uuid
+  reason          String   @db.VarChar(255)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  totalDays       Int      @map("total_days")
+  snapshot        Json     // Copia inmutable del contrato + hitos en esa versión
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, versionNumber])
+  @@index([contractId, versionNumber])
+  @@map("contract_versions")
 }

@@ -4,6 +4,8 @@ import { validateBody } from '../middlewares/validate-request.middleware.js';
 import { createContractSchema } from '../../application/validation/escrow-wallet.schemas.js';
 import { roleGuard } from '../middlewares/role.middleware.js';
 import { UserRole } from '../../domain/value-objects/user-role.enum.js';
+import { createChangeRequestSchema, signChangeRequestSchema } from '../../application/validation/scope-change.schemas.js';
+
 
 export const contractRouter = Router();
 
@@ -60,4 +62,30 @@ contractRouter.post(
     '/:id/progress',
     Container.authMiddleware,
     Container.contractController.advanceProgress
+);
+
+contractRouter.post(
+    '/:id/change-requests',
+    Container.authMiddleware,
+    validateBody(createChangeRequestSchema),
+    Container.contractController.createChangeRequest
+);
+
+contractRouter.post(
+    '/:id/change-requests/:changeRequestId/approve',
+    Container.authMiddleware,
+    validateBody(signChangeRequestSchema),
+    Container.contractController.approveChangeRequest
+);
+
+contractRouter.post(
+    '/:id/change-requests/:changeRequestId/reject',
+    Container.authMiddleware,
+    Container.contractController.rejectChangeRequest
+);
+
+contractRouter.get(
+    '/:id/versions',
+    Container.authMiddleware,
+    Container.contractController.getVersions
 );
