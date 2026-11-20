@@ -64,6 +64,9 @@ model User {
   /// Estado de actividad de la cuenta (permite suspender o desactivar usuarios)
   isActive         Boolean      @default(true) @map("is_active")
 
+  /// Token de registro de Firebase Cloud Messaging para notificaciones push con app cerrada o en segundo plano
+  fcmToken         String?      @map("fcm_token") @db.Text
+
   /// Fecha y hora de creación del registro
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 

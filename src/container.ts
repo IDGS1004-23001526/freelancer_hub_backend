@@ -36,6 +36,7 @@ import { WalletUseCase } from './application/use-cases/wallet.use-case.js';
 import { WalletController } from './presentation/controllers/wallet.controller.js';
 import { RealtimeSocketServer } from './infrastructure/realtime/socket.server.js';
 import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.interface.js';
+import { FirebaseNotificationService } from './infrastructure/notifications/firebase-notification.service.js';
 
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
@@ -52,9 +53,30 @@ export class Container {
   public static readonly storageService = new LocalStorageService();
   public static readonly projectRepository = new PrismaProjectRepository(prisma);
   public static readonly proposalRepository = new PrismaProposalRepository(prisma);
+  public static readonly pushNotificationService = new FirebaseNotificationService({
+    logger: Container.logger,
+  });
   public static readonly realtimeServer = new RealtimeSocketServer(
     Container.jwtTokenGenerator,
-    { logger: Container.logger }
+    {
+      logger: Container.logger,
+      onMessageNotification: (recipientId, payload) => {
+        void Container.pushNotificationService.sendPushNotification({
+          recipientId,
+          title: `Nuevo mensaje de ${payload.senderName || 'Freelancer Hub'}`,
+          body: payload.content || 'Te ha enviado un mensaje.',
+          data: {
+            conversationId: payload.conversationId || payload.contractId,
+            contractId: payload.contractId,
+            senderId: payload.senderId,
+            senderName: payload.senderName || '',
+            senderRole: payload.senderRole || '',
+            content: payload.content || '',
+            id: payload.id,
+          },
+        });
+      },
+    }
   );
   public static readonly realtimeNotifier: IRealtimeNotifier = Container.realtimeServer;
 

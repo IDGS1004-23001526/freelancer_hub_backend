@@ -431,3 +431,67 @@ usersRouter.put('/me/skills', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @ruta POST /api/v1/users/fcm-token y POST /api/v1/users/me/fcm-token
+ * @descripcion Registra o actualiza el FCM Device Token para notificaciones push en segundo plano / app cerrada
+ */
+const handleFcmTokenRegistration = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ success: false, statusCode: 401, message: 'Usuario no autenticado' });
+    }
+
+    const token = typeof req.body?.fcmToken === 'string'
+      ? req.body.fcmToken.trim()
+      : typeof req.body?.token === 'string'
+        ? req.body.token.trim()
+        : '';
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: 'fcmToken es obligatorio.',
+      });
+    }
+
+    const saved = await Container.pushNotificationService.registerToken(userId, token);
+
+    return res.status(200).json({
+      success: saved,
+      statusCode: 200,
+      message: 'Token FCM registrado exitosamente para notificaciones push.',
+    });
+  } catch (error: any) {
+    Container.logger.error('Error al registrar token FCM', error, {
+      context: 'USER:FCM',
+      userId: req.user?.sub,
+    });
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: error?.message ?? 'Error interno al registrar token FCM',
+    });
+  }
+};
+
+usersRouter.post('/fcm-token', handleFcmTokenRegistration);
+usersRouter.post('/me/fcm-token', handleFcmTokenRegistration);
+
+usersRouter.delete('/fcm-token', async (req: Request, res: Response) => {
+  const userId = req.user?.sub;
+  if (userId) {
+    await Container.pushNotificationService.removeToken(userId);
+  }
+  return res.status(200).json({ success: true, message: 'Token FCM desvinculado.' });
+});
+usersRouter.delete('/me/fcm-token', async (req: Request, res: Response) => {
+  const userId = req.user?.sub;
+  if (userId) {
+    await Container.pushNotificationService.removeToken(userId);
+  }
+  return res.status(200).json({ success: true, message: 'Token FCM desvinculado.' });
+});
+
+

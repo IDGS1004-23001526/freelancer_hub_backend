@@ -618,6 +618,22 @@ chatRouter.post('/:conversationId/messages', async (req: Request, res: Response)
     const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
     if (recipientId && recipientId !== userId) {
       Container.realtimeServer.emitMessageNotification(recipientId, payload);
+      // Disparar push notification vía FCM (para cuando la app está en segundo plano o cerrada)
+      void Container.pushNotificationService.sendPushNotification({
+        recipientId,
+        title: `Nuevo mensaje de ${payload.senderName || 'Freelancer Hub'}`,
+        body: payload.content || 'Te ha enviado un mensaje.',
+        data: {
+          conversationId,
+          contractId: conversationId,
+          senderId: payload.senderId,
+          senderName: payload.senderName || '',
+          senderRole: payload.senderRole || '',
+          senderAvatarUrl: payload.senderAvatarUrl || '',
+          content: payload.content || '',
+          id: payload.id,
+        },
+      });
     }
 
     Container.logger.info('Mensaje enviado y emitido en tiempo real', {
@@ -732,6 +748,22 @@ chatRouter.post(
       const recipientId = conversation.clientId === userId ? conversation.freelancerId : conversation.clientId;
       if (recipientId && recipientId !== userId) {
         Container.realtimeServer.emitMessageNotification(recipientId, payload);
+        // Disparar push notification vía FCM (para cuando la app está en segundo plano o cerrada)
+        void Container.pushNotificationService.sendPushNotification({
+          recipientId,
+          title: `Nuevo archivo de ${payload.senderName || 'Freelancer Hub'}`,
+          body: payload.content || 'Te ha enviado un archivo adjunto.',
+          data: {
+            conversationId,
+            contractId: conversationId,
+            senderId: payload.senderId,
+            senderName: payload.senderName || '',
+            senderRole: payload.senderRole || '',
+            senderAvatarUrl: payload.senderAvatarUrl || '',
+            content: payload.content || '',
+            id: payload.id,
+          },
+        });
       }
 
       Container.logger.info('Archivo adjunto subido y emitido en tiempo real', {

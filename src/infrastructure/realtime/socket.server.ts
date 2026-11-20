@@ -175,6 +175,7 @@ export interface RealtimeSocketServerOptions {
   canAccessContract?: ContractAccessValidator;
   corsOrigins?: string[];
   logger?: ILogger;
+  onMessageNotification?: (recipientUserId: string, payload: NewMessageEventPayload) => void;
 }
 
 /**
@@ -185,12 +186,14 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
   private readonly canAccessContract: ContractAccessValidator;
   private readonly corsOrigins: string[];
   private readonly logger?: ILogger;
+  private readonly onMessageNotification?: (recipientUserId: string, payload: NewMessageEventPayload) => void;
 
   constructor(
     private readonly jwtTokenGenerator: IJwtTokenGenerator,
     options: RealtimeSocketServerOptions = {}
   ) {
     this.logger = options.logger;
+    this.onMessageNotification = options.onMessageNotification;
     this.canAccessContract = options.canAccessContract ?? defaultContractAccessValidator;
     this.corsOrigins = options.corsOrigins ?? [
       'http://localhost:5173',
@@ -371,7 +374,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
 
             const recipientId = conv.clientId === user.sub ? conv.freelancerId : conv.clientId;
             if (recipientId && recipientId !== user.sub) {
-              io.to(`user:${recipientId}`).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE_NOTIFICATION, {
+              const notifPayload: NewMessageEventPayload = {
                 id: messageId,
                 contractId,
                 conversationId: contractId,
@@ -380,7 +383,9 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
                 content,
                 attachmentUrl: rawAttachment,
                 createdAt,
-              });
+              };
+              io.to(`user:${recipientId}`).emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE_NOTIFICATION, notifPayload);
+              this.onMessageNotification?.(recipientId, notifPayload);
             }
           }
         }
@@ -456,6 +461,7 @@ export class RealtimeSocketServer implements IRealtimeNotifier {
     this.io
       ?.to(`user:${recipientUserId}`)
       .emit(CONTRACT_SOCKET_EVENTS.NEW_MESSAGE_NOTIFICATION, payload);
+    this.onMessageNotification?.(recipientUserId, payload);
   }
 
   public emitProfileUpdated(userId: string, data: { avatarUrl?: string }): void {
