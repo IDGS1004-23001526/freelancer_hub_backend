@@ -25,6 +25,8 @@ dist/
 .env
 .env.local
 .env.*.local
+*firebase*.json
+*service-account*.json
 
 # Editor directories and files
 .idea
