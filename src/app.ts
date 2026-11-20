@@ -78,6 +78,7 @@ export function createApp(): Express {
 
   // Rutas de la API
   app.use('/api', apiRouter);
+  app.use('/users', apiRouter);
 
   // Middlewares de captura de 404 y manejo centralizado de errores
   app.use(notFoundHandler);

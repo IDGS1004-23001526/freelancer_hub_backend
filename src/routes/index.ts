@@ -29,6 +29,7 @@ apiRouter.use('/v1/profile', profileRouter);
 
 // Rutas de la API v1 (Módulo de Usuarios - Swagger Spec)
 apiRouter.use('/v1/users', usersRouter);
+apiRouter.use('/users', usersRouter);
 
 // Rutas de la API v1 (Catálogo Global de Habilidades)
 apiRouter.use('/v1/skills', skillsRouter);
