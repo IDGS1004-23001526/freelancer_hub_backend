@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ContractEscrowUseCase } from '../../application/use-cases/contract-escrow.use-case.js';
 import { InvalidTokenException } from '../../domain/exceptions/domain.exception.js';
 import { Container } from '../../container.js';
+import { ContractScopeUseCase } from '../../application/use-cases/contract-scope.use-case.js';
 
 export class ContractController {
-    constructor(private readonly contractEscrowUseCase: ContractEscrowUseCase) {}
+    constructor(private readonly contractEscrowUseCase: ContractEscrowUseCase, private readonly contractScopeUseCase: ContractScopeUseCase) { }
 
     public create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -138,6 +139,86 @@ export class ContractController {
                 resultCount: result.length,
             });
 
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    public createChangeRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+            const contractId = String(req.params.id);
+            const result = await this.contractScopeUseCase.createChangeRequest(
+                claims.sub,
+                contractId,
+                req.body
+            );
+            res.status(201).json({
+                success: true,
+                statusCode: 201,
+                message: 'Solicitud de cambio registrada y calculada con el Triángulo de Hierro.',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+    public approveChangeRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+            const contractId = String(req.params.id);
+            const changeRequestId = String(req.params.changeRequestId);
+            const result = await this.contractScopeUseCase.approveChangeRequest(
+                claims.sub,
+                contractId,
+                changeRequestId
+            );
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                message: result.awaitingCounterpartySignature
+                    ? 'Firma registrada. Esperando confirmación digital de la contraparte.'
+                    : 'Adenda aprobada por ambas partes. Contrato actualizado y versionado.',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+    public rejectChangeRequest = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+            const contractId = String(req.params.id);
+            const changeRequestId = String(req.params.changeRequestId);
+            const result = await this.contractScopeUseCase.rejectChangeRequest(
+                claims.sub,
+                contractId,
+                changeRequestId
+            );
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                message: 'Solicitud de cambio rechazada.',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+    public getVersions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+            const contractId = String(req.params.id);
+            const result = await this.contractScopeUseCase.getContractVersions(claims.sub, contractId);
             res.status(200).json({
                 success: true,
                 statusCode: 200,

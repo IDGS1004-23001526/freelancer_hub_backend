@@ -37,6 +37,7 @@ import { WalletController } from './presentation/controllers/wallet.controller.j
 import { RealtimeSocketServer } from './infrastructure/realtime/socket.server.js';
 import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.interface.js';
 import { FirebaseNotificationService } from './infrastructure/notifications/firebase-notification.service.js';
+import { ContractScopeUseCase } from './application/use-cases/contract-scope.use-case.js';
 
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
@@ -140,6 +141,7 @@ export class Container {
   );
 
   public static readonly contractEscrowUseCase = new ContractEscrowUseCase();
+  public static readonly contractScopeUseCase = new ContractScopeUseCase();
   public static readonly walletUseCase = new WalletUseCase();
 
   // Capa de Presentación
@@ -167,7 +169,8 @@ export class Container {
   );
 
   public static readonly contractController = new ContractController(
-    Container.contractEscrowUseCase
+    Container.contractEscrowUseCase,
+    Container.contractScopeUseCase
   );
 
   public static readonly walletController = new WalletController(

@@ -230,3 +230,27 @@ export class InvalidClabeException extends DomainException {
     super('La cuenta CLABE interbancaria debe contener exactamente 18 dígitos numéricos.');
   }
 }
+
+/**
+ * MODULE ======> SCOPE & IRON TRIANGLE 
+ */
+export class ChangeRequestNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(changeRequestId: string) {
+    super(`La solicitud de cambio (adenda) con id "${changeRequestId}" no existe.`);
+  }
+}
+
+export class ChangeRequestAlreadyResolvedException extends DomainException {
+  public readonly statusCode = 409;
+  constructor(status: string) {
+    super(`La solicitud de cambio ya fue resuelta con estado "${status}" y no puede modificarse.`);
+  }
+}
+
+export class InvalidScopeChangeException extends DomainException {
+  public readonly statusCode = 400;
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
