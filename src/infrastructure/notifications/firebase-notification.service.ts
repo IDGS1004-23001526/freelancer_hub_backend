@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { initializeApp, getApps, cert, applicationDefault, App } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import { prisma } from '../persistence/prisma/prisma.client.js';
@@ -32,6 +33,7 @@ export class FirebaseNotificationService {
     try {
       const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
       const googleAppCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const defaultKeyPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
 
       if (serviceAccountRaw) {
         let credsObj: any;
@@ -47,11 +49,24 @@ export class FirebaseNotificationService {
             credential: cert(credsObj),
           });
           this.isInitialized = true;
-          this.logger?.info('Firebase Admin inicializado exitosamente con credenciales de servicio', {
+          this.logger?.info('Firebase Admin inicializado exitosamente con FIREBASE_SERVICE_ACCOUNT', {
             context: 'NOTIFICATIONS:FIREBASE',
           });
           return;
         }
+      }
+
+      if (fs.existsSync(defaultKeyPath)) {
+        const fileContent = fs.readFileSync(defaultKeyPath, 'utf-8');
+        const credsObj = JSON.parse(fileContent);
+        this.firebaseApp = initializeApp({
+          credential: cert(credsObj),
+        });
+        this.isInitialized = true;
+        this.logger?.info('Firebase Admin inicializado exitosamente desde serviceAccountKey.json', {
+          context: 'NOTIFICATIONS:FIREBASE',
+        });
+        return;
       }
 
       if (googleAppCreds && fs.existsSync(googleAppCreds)) {

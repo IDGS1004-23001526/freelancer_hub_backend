@@ -36,6 +36,9 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-freelancer_hub_super_secret_refresh_jwt_key_2026!#}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
       JWT_REFRESH_EXPIRATION_DAYS: ${JWT_REFRESH_EXPIRATION_DAYS:-7}
+      FIREBASE_SERVICE_ACCOUNT: /app/firebase-service-account.json
+    volumes:
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro,Z
     ports:
       - "${PORT:-4000}:4000"
 
