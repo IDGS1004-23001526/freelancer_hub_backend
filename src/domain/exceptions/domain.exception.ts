@@ -278,3 +278,10 @@ export class MilestoneAlreadyApprovedException extends DomainException {
     super('Este hito ya fue aprobado previamente y sus fondos ya han sido liberados.');
   }
 }
+
+export class MilestoneAlreadySubmittedException extends DomainException {
+  public readonly statusCode = 409;
+  constructor() {
+    super('Este hito ya tiene una entrega en revisión. No se permiten nuevas entregas hasta que el cliente dictamine.');
+  }
+}

@@ -9,6 +9,8 @@ import {
     MilestoneNotFoundException,
     UnauthorizedMilestoneActionException,
     ContractNotFundedException,
+    MilestoneAlreadyApprovedException,
+    MilestoneAlreadySubmittedException,
 } from '../../domain/exceptions/domain.exception.js';
 
 export interface SubmitDeliveryInput {
@@ -58,6 +60,14 @@ export class SubmitDeliveryUseCase {
             contract.status !== ContractStatus.IN_PROGRESS
         ) {
             throw new ContractNotFundedException();
+        }
+
+        // Regla: Impedir nuevas entregas mientras el hito esté en revisión o ya aprobado
+        if (milestone.status === ContractMilestoneStatus.APPROVED) {
+            throw new MilestoneAlreadyApprovedException();
+        }
+        if (milestone.status === ContractMilestoneStatus.SUBMITTED) {
+            throw new MilestoneAlreadySubmittedException();
         }
 
         let sha256Hash: string;
