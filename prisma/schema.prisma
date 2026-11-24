@@ -96,8 +96,29 @@ model User {
   clientContracts         Contract[]     @relation("ClientContracts")
   freelancerContracts     Contract[]     @relation("FreelancerContracts")
   wallet                  Wallet?
+  refreshTokens           RefreshToken[]
 
   @@map("users")
+}
+
+/// ============================================================================
+/// Modelo: RefreshToken
+/// Tabla en BD: `refresh_tokens`
+/// Propósito: Almacenamiento persistente y revocable de Refresh Tokens (JWT).
+/// ============================================================================
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 /// ============================================================================

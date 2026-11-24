@@ -2,7 +2,7 @@ import { BcryptPasswordHasher } from './infrastructure/security/bcrypt-password-
 import { JwtTokenGenerator } from './infrastructure/security/jwt-token-generator.js';
 import { InMemoryUserRepository } from './infrastructure/persistence/repositories/in-memory-user.repository.js';
 import { PrismaUserRepository } from './infrastructure/persistence/repositories/prisma-user.repository.js';
-import { InMemoryRefreshTokenRepository } from './infrastructure/persistence/repositories/in-memory-refresh-token.repository.js';
+import { PrismaRefreshTokenRepository } from './infrastructure/persistence/repositories/prisma-refresh-token.repository.js';
 import { InMemoryProfileRepository } from './infrastructure/persistence/repositories/in-memory-profile.repository.js';
 import { PrismaProfileRepository } from './infrastructure/persistence/repositories/prisma-profile.repository.js';
 import { prisma } from './infrastructure/persistence/prisma/prisma.client.js';
@@ -52,7 +52,7 @@ export class Container {
   public static readonly passwordHasher = new BcryptPasswordHasher();
   public static readonly jwtTokenGenerator = new JwtTokenGenerator();
   public static readonly userRepository = new PrismaUserRepository(prisma);
-  public static readonly refreshTokenRepository = new InMemoryRefreshTokenRepository();
+  public static readonly refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
   public static readonly profileRepository = new PrismaProfileRepository(prisma);
   public static readonly storageService = new LocalStorageService();
   public static readonly projectRepository = new PrismaProjectRepository(prisma);
