@@ -254,3 +254,27 @@ export class InvalidScopeChangeException extends DomainException {
     super(mensaje);
   }
 }
+
+/**
+ * MODULE ======> MILESTONES & DELIVERIES (FLH-BE-DELIVERY / FLH-BE-RELEASE)
+ */
+export class MilestoneNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(milestoneId: string) {
+    super(`El hito con id "${milestoneId}" no fue encontrado.`);
+  }
+}
+
+export class UnauthorizedMilestoneActionException extends DomainException {
+  public readonly statusCode = 403;
+  constructor(mensaje = 'No tienes permisos para realizar esta acción sobre el hito.') {
+    super(mensaje);
+  }
+}
+
+export class MilestoneAlreadyApprovedException extends DomainException {
+  public readonly statusCode = 409;
+  constructor() {
+    super('Este hito ya fue aprobado previamente y sus fondos ya han sido liberados.');
+  }
+}

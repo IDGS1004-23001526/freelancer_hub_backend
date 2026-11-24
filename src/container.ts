@@ -38,6 +38,9 @@ import { RealtimeSocketServer } from './infrastructure/realtime/socket.server.js
 import { IRealtimeNotifier } from './application/interfaces/realtime-notifier.interface.js';
 import { FirebaseNotificationService } from './infrastructure/notifications/firebase-notification.service.js';
 import { ContractScopeUseCase } from './application/use-cases/contract-scope.use-case.js';
+import { SubmitDeliveryUseCase } from './application/use-cases/submit-delivery.use-case.js';
+import { ApproveMilestoneUseCase } from './application/use-cases/approve-milestone.use-case.js';
+import { MilestoneController } from './presentation/controllers/milestone.controller.js';
 
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
@@ -143,6 +146,8 @@ export class Container {
   public static readonly contractEscrowUseCase = new ContractEscrowUseCase();
   public static readonly contractScopeUseCase = new ContractScopeUseCase();
   public static readonly walletUseCase = new WalletUseCase();
+  public static readonly submitDeliveryUseCase = new SubmitDeliveryUseCase(Container.storageService);
+  public static readonly approveMilestoneUseCase = new ApproveMilestoneUseCase();
 
   // Capa de Presentación
   public static readonly authController = new AuthController(
@@ -175,5 +180,10 @@ export class Container {
 
   public static readonly walletController = new WalletController(
     Container.walletUseCase
+  );
+
+  public static readonly milestoneController = new MilestoneController(
+    Container.submitDeliveryUseCase,
+    Container.approveMilestoneUseCase
   );
 }
