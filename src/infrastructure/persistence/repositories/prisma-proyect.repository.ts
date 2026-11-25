@@ -137,26 +137,56 @@ export class PrismaProjectRepository implements IProjectRepository {
             this.prisma.project.count({ where }),
         ]);
 
-        const domainProjects = items.map((item) => {
-            const skillNames = item.skills.map((s) => s.skill.name);
-            return new Project({
-                id: item.id,
-                clientId: item.clientId,
-                title: item.title,
-                description: item.description,
-                budget: new Budget(Number(item.budget)),
-                skills: new SkillTags(skillNames.length >= 3 ? skillNames : [...skillNames, 'General', 'Software', 'Tecnología'].slice(0, 3)),
-                estimatedDate: item.estimatedDate,
-                status: item.status as ProjectStatus,
-                createdAt: item.createdAt,
-                updatedAt: item.updatedAt,
-            });
-        });
+        const domainProjects = items.map((item) => this.mapRowToDomain(item));
 
         return {
             projects: domainProjects,
             total,
         };
+    }
+
+    /**
+     * Busca una convocatoria individual por su UUID junto con sus habilidades
+     */
+    public async findById(id: string): Promise<Project | null> {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            return null;
+        }
+
+        const item = await this.prisma.project.findUnique({
+            where: { id },
+            include: {
+                skills: {
+                    include: {
+                        skill: true,
+                    },
+                },
+            },
+        });
+
+        if (!item) return null;
+        return this.mapRowToDomain(item);
+    }
+
+    private mapRowToDomain(item: any): Project {
+        const skillNames = (item.skills || []).map((s: any) => s.skill.name);
+        return new Project({
+            id: item.id,
+            clientId: item.clientId,
+            title: item.title,
+            description: item.description,
+            budget: new Budget(Number(item.budget)),
+            skills: new SkillTags(
+                skillNames.length >= 3
+                    ? skillNames
+                    : [...skillNames, 'General', 'Software', 'Tecnología'].slice(0, 3)
+            ),
+            estimatedDate: item.estimatedDate,
+            status: item.status as ProjectStatus,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+        });
     }
 
     private toSlug(nombre: string): string {

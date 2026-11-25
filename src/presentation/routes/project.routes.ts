@@ -19,6 +19,16 @@ projectRouter.get(
     Container.projectController.getProjects
 );
 
+/**
+ * @ruta GET /api/v1/projects/:id
+ * @descripcion Consulta el detalle de una convocatoria individual
+ * @acceso Público
+ */
+projectRouter.get(
+    '/:id',
+    Container.projectController.getById
+);
+
 const createProjectRateLimit = createRateLimitMiddleware({
     maxRequests: 10,
     windowMs: 60 * 60 * 1000, // 1 hora

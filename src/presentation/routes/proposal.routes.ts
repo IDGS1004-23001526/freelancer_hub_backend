@@ -30,12 +30,25 @@ proposalRouter.post(
 );
 
 /**
+ * @ruta GET /api/v1/proposals/me
+ * @descripcion Consulta todas las postulaciones del freelancer autenticado
+ * @acceso Protegido (Bearer, rol FREELANCER)
+ */
+proposalRouter.get(
+    '/me',
+    Container.authMiddleware,
+    roleGuard([UserRole.FREELANCER]),
+    Container.proposalController.getMine
+);
+
+/**
  * @ruta GET /api/v1/proposals/project/:projectId
- * @descripcion Consulta las propuestas recibidas para una convocatoria
- * @acceso Protegido (Bearer)
+ * @descripcion Consulta las propuestas recibidas para una convocatoria (solo cliente dueño o ADMIN)
+ * @acceso Protegido (Bearer, rol CLIENT o ADMIN)
  */
 proposalRouter.get(
     '/project/:projectId',
     Container.authMiddleware,
+    roleGuard([UserRole.CLIENT, UserRole.ADMIN]),
     Container.proposalController.getByProject
 );

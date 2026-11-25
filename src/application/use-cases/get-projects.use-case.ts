@@ -1,6 +1,7 @@
 import { IProjectRepository, ProjectSearchParams } from '../../domain/repositories/project.repository.interface.js';
 import { ProjectResponseDto, toProjectDto } from '../dtos/project.dto.js';
 import { ProjectStatus } from '../../domain/entities/project.entity.js';
+import { ProjectNotFoundException } from '../../domain/exceptions/domain.exception.js';
 
 export interface PaginatedProjectsResult {
     projects: ProjectResponseDto[];
@@ -40,5 +41,13 @@ export class GetProjectsUseCase {
                 limit,
             },
         };
+    }
+
+    public async getById(projectId: string): Promise<ProjectResponseDto> {
+        const project = await this.projectRepository.findById(projectId);
+        if (!project) {
+            throw new ProjectNotFoundException(projectId);
+        }
+        return toProjectDto(project);
     }
 }

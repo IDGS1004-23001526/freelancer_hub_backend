@@ -31,4 +31,9 @@ export interface IProjectRepository {
      * Busca y filtra convocatorias en el feed usando índices optimizados (B-Tree y Full-Text)
      */
     findMany(params: ProjectSearchParams): Promise<ProjectSearchResult>;
+
+    /**
+     * Busca una convocatoria individual por su ID
+     */
+    findById(id: string): Promise<Project | null>;
 }
