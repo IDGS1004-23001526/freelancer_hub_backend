@@ -83,6 +83,7 @@ export const googleAuthSchema = z.object({
     .enum([UserRole.CLIENT, UserRole.FREELANCER, UserRole.ADMIN])
     .optional()
     .default(UserRole.FREELANCER),
+  mode: z.enum(['login', 'register']).optional().default('login'),
 });
 
 export type GoogleAuthRequestDto = z.infer<typeof googleAuthSchema>;

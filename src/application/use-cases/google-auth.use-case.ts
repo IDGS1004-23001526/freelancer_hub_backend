@@ -8,6 +8,7 @@ import { AuthResponseDto } from '../dtos/auth-response.dto.js';
 import { toUserProfileDto } from '../dtos/user-profile.dto.js';
 import { Email } from '../../domain/value-objects/email.vo.js';
 import { User } from '../../domain/entities/user.entity.js';
+import { UserNotFoundException } from '../../domain/exceptions/domain.exception.js';
 import { RefreshToken } from '../../domain/entities/refresh-token.entity.js';
 import {
   InvalidCredentialsException,
@@ -59,10 +60,8 @@ export class GoogleAuthUseCase {
         await this.userRepository.update(user);
       }
     } else {
-      if ((dto as any).mode === 'login' || !dto.role) {
-        const err: any = new Error('No tienes una cuenta registrada con este correo. Por favor regístrate primero.');
-        err.statusCode = 404;
-        throw err;
+      if (dto.mode === 'login' || !dto.role) {
+        throw new UserNotFoundException(payload.email);
       }
 
       // 3. Si no existe y viene de registro, crear nuevo usuario federado
