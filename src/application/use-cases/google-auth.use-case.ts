@@ -59,7 +59,13 @@ export class GoogleAuthUseCase {
         await this.userRepository.update(user);
       }
     } else {
-      // 3. Si no existe, crear nuevo usuario federado
+      if ((dto as any).mode === 'login' || !dto.role) {
+        const err: any = new Error('No tienes una cuenta registrada con este correo. Por favor regístrate primero.');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      // 3. Si no existe y viene de registro, crear nuevo usuario federado
       const userId = uuidv4();
       user = User.create({
         id: userId,
