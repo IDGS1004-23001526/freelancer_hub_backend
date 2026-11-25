@@ -23,6 +23,7 @@ export function createApp(): Express {
   app.use(
     helmet({
       contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
   );
   const allowedOrigins = [
