@@ -18,16 +18,16 @@ datasource db {
 
 /// Proveedor de autenticación utilizado por el usuario
 enum AuthProvider {
-  LOCAL   // Registro tradicional con email y contraseña
-  GOOGLE  // Autenticación federada mediante Google OAuth2
-  APPLE   // Autenticación federada mediante Apple ID
+  LOCAL // Registro tradicional con email y contraseña
+  GOOGLE // Autenticación federada mediante Google OAuth2
+  APPLE // Autenticación federada mediante Apple ID
 }
 
 /// Rol del usuario en la plataforma FreelancerHub
 enum UserRole {
-  CLIENT      // Cliente / Contratante que publica proyectos
-  FREELANCER  // Profesional independiente que ofrece servicios
-  ADMIN       // Administrador con permisos de gestión en la plataforma
+  CLIENT // Cliente / Contratante que publica proyectos
+  FREELANCER // Profesional independiente que ofrece servicios
+  ADMIN // Administrador con permisos de gestión en la plataforma
 }
 
 // ----------------------------------------------------------------------------
@@ -41,62 +41,64 @@ enum UserRole {
 /// ============================================================================
 model User {
   /// Identificador único universal (UUID v4)
-  id               String       @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Correo electrónico único del usuario (usado para login y notificaciones)
-  email            String       @unique @db.VarChar(255)
+  email String @unique @db.VarChar(255)
 
   /// Hash seguro de contraseña (bcrypt/argon2). Nullable para logins OAuth puros
-  passwordHash     String?      @map("password_hash") @db.VarChar(255)
+  passwordHash String? @map("password_hash") @db.VarChar(255)
 
   /// Proveedor de identidad que registró o autenticó al usuario
-  authProvider     AuthProvider @default(LOCAL) @map("auth_provider")
+  authProvider AuthProvider @default(LOCAL) @map("auth_provider")
 
   /// Identificador asignado por el proveedor OAuth (sub de Google/Apple)
-  authProviderId   String?      @unique @map("auth_provider_id") @db.VarChar(255)
+  authProviderId String? @unique @map("auth_provider_id") @db.VarChar(255)
 
   /// Rol asignado dentro de la plataforma
-  role             UserRole     @default(FREELANCER)
+  role UserRole @default(FREELANCER)
 
   /// Indica si el correo electrónico ha sido confirmado
-  isEmailVerified  Boolean      @default(false) @map("is_email_verified")
+  isEmailVerified Boolean @default(false) @map("is_email_verified")
 
   /// Estado de actividad de la cuenta (permite suspender o desactivar usuarios)
-  isActive         Boolean      @default(true) @map("is_active")
+  isActive Boolean @default(true) @map("is_active")
 
   /// Token de registro de Firebase Cloud Messaging para notificaciones push con app cerrada o en segundo plano
-  fcmToken         String?      @map("fcm_token") @db.Text
+  fcmToken String? @map("fcm_token") @db.Text
 
   /// Fecha y hora de creación del registro
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   /// Fecha y hora de la última modificación del registro
-  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
   /// Relación 1 a 1: Cada usuario tiene exactamente un perfil detallado
-  profile          Profile?
+  profile Profile?
 
   /// Relación 1 a N: Un usuario puede registrar múltiples métodos de pago
-  paymentMethods   PaymentMethod[]
+  paymentMethods PaymentMethod[]
 
-  projects         Project[]
+  projects Project[]
 
-  proposals        Proposal[]
+  proposals Proposal[]
 
-  clientConversations     Conversation[] @relation("ClientConversations")
+  clientConversations Conversation[] @relation("ClientConversations")
 
   freelancerConversations Conversation[] @relation("FreelancerConversations")
 
-  sentMessages            Message[]      @relation("SentMessages")
+  sentMessages Message[] @relation("SentMessages")
 
-  clientContracts         Contract[]     @relation("ClientContracts")
-  freelancerContracts     Contract[]     @relation("FreelancerContracts")
-  wallet                  Wallet?
-  refreshTokens           RefreshToken[]
+  clientContracts     Contract[]     @relation("ClientContracts")
+  freelancerContracts Contract[]     @relation("FreelancerContracts")
+  wallet              Wallet?
+  refreshTokens       RefreshToken[]
+  reviewsGiven        Review[]       @relation("ReviewsGiven")
+  reviewsReceived     Review[]       @relation("ReviewsReceived")
 
   @@map("users")
 }
@@ -114,7 +116,7 @@ model RefreshToken {
   isRevoked Boolean  @default(false) @map("is_revoked")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -128,47 +130,47 @@ model RefreshToken {
 /// ============================================================================
 model Profile {
   /// Identificador único del perfil
-  id          String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Clave foránea única vinculada a la tabla `users` (garantiza relación 1:1)
-  userId      String   @unique @map("user_id") @db.Uuid
+  userId String @unique @map("user_id") @db.Uuid
 
   /// Primer nombre o nombres de pila
-  firstName   String   @map("first_name") @db.VarChar(100)
+  firstName String @map("first_name") @db.VarChar(100)
 
   /// Apellidos
-  lastName    String   @map("last_name") @db.VarChar(100)
+  lastName String @map("last_name") @db.VarChar(100)
 
   /// Biografía o resumen profesional
-  bio         String?  @db.Text
+  bio String? @db.Text
 
   /// Teléfono de contacto
-  phone       String?  @db.VarChar(25)
+  phone String? @db.VarChar(25)
 
   /// URL de la imagen de avatar o foto de perfil
-  avatarUrl   String?  @map("avatar_url") @db.VarChar(500)
+  avatarUrl String? @map("avatar_url") @db.VarChar(500)
 
   /// Título profesional o especialidad (ej. Full Stack Developer)
   professionalTitle String? @map("professional_title") @db.VarChar(150)
 
   /// Tarifa por hora en USD
-  hourlyRate        Float?  @map("hourly_rate")
+  hourlyRate Float? @map("hourly_rate")
 
   /// Fecha y hora de creación del perfil
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   /// Fecha y hora de la última actualización
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
   /// Usuario propietario del perfil (si se elimina el usuario, se elimina el perfil)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// Relación 1 a N con tabla intermedia: Habilidades asociadas al perfil
-  skills      ProfileSkill[]
+  skills ProfileSkill[]
 
   /// Relación 1 a N: Proyectos destacados del portafolio del perfil
   portfolioItems PortfolioItem[]
@@ -183,34 +185,34 @@ model Profile {
 /// ============================================================================
 model PortfolioItem {
   /// Identificador único del proyecto
-  id          String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Clave foránea vinculada al perfil dueño del proyecto
-  profileId   String   @map("profile_id") @db.Uuid
+  profileId String @map("profile_id") @db.Uuid
 
   /// Título del proyecto
-  title       String   @db.VarChar(150)
+  title String @db.VarChar(150)
 
   /// Descripción del trabajo realizado y tecnologías
-  description String   @db.Text
+  description String @db.Text
 
   /// Enlace web del proyecto (demo, repo, live)
-  projectUrl  String   @map("project_url") @db.VarChar(500)
+  projectUrl String @map("project_url") @db.VarChar(500)
 
   /// Enlace a captura o imagen destacada del proyecto
-  imageUrl    String?  @map("image_url") @db.VarChar(500)
+  imageUrl String? @map("image_url") @db.VarChar(500)
 
   /// Fecha y hora de creación
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   /// Fecha y hora de la última modificación
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
-  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
   @@map("portfolio_items")
@@ -223,25 +225,25 @@ model PortfolioItem {
 /// ============================================================================
 model Skill {
   /// Identificador único de la habilidad
-  id          String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Nombre legible de la habilidad (ej. "React", "PostgreSQL", "Figma")
-  name        String   @unique @db.VarChar(100)
+  name String @unique @db.VarChar(100)
 
   /// Identificador amigable para URLs y búsquedas (ej. "react", "postgresql")
-  slug        String   @unique @db.VarChar(100)
+  slug String @unique @db.VarChar(100)
 
   /// Categoría a la que pertenece (ej. "Desarrollo Web", "Diseño UI/UX", "DevOps")
-  category    String   @db.VarChar(100)
+  category String @db.VarChar(100)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
   /// Perfiles que poseen esta habilidad (a través de la tabla intermedia)
-  profiles    ProfileSkill[]
+  profiles ProfileSkill[]
 
-  projects    ProjectSkill[]
+  projects ProjectSkill[]
 
   @@map("skills")
 }
@@ -253,20 +255,20 @@ model Skill {
 /// ============================================================================
 model ProfileSkill {
   /// Clave foránea al perfil
-  profileId   String   @map("profile_id") @db.Uuid
+  profileId String @map("profile_id") @db.Uuid
 
   /// Clave foránea a la habilidad
-  skillId     String   @map("skill_id") @db.Uuid
+  skillId String @map("skill_id") @db.Uuid
 
   /// Fecha y hora en la que el usuario agregó la habilidad a su perfil
-  addedAt     DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+  addedAt DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
-  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   /// Clave primaria compuesta por (profile_id, skill_id) que evita duplicados
   @@id([profileId, skillId])
@@ -280,45 +282,44 @@ model ProfileSkill {
 /// ============================================================================
 model PaymentMethod {
   /// Identificador único del método de pago
-  id                String   @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Clave foránea del usuario dueño de este método de pago
-  userId            String   @map("user_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
 
   /// ID del cliente en la pasarela de pagos (ej. Stripe: `cus_xxx`, Openpay, etc.)
-  gatewayCustomerId String   @map("gateway_customer_id") @db.VarChar(255)
+  gatewayCustomerId String @map("gateway_customer_id") @db.VarChar(255)
 
   /// Token o ID de la tarjeta en la pasarela (ej. `pm_xxx` o `card_xxx`). NUNCA se guardan números completos
-  gatewayToken      String   @map("gateway_token") @db.VarChar(255)
+  gatewayToken String @map("gateway_token") @db.VarChar(255)
 
   /// Marca o franquicia de la tarjeta (ej. "visa", "mastercard", "amex")
-  cardBrand         String   @map("card_brand") @db.VarChar(50)
+  cardBrand String @map("card_brand") @db.VarChar(50)
 
   /// Últimos 4 dígitos de la tarjeta para visualización del usuario
-  last4             String   @db.VarChar(4)
+  last4 String @db.VarChar(4)
 
   /// Mes de expiración de la tarjeta (1-12)
-  expMonth          Int      @map("exp_month")
+  expMonth Int @map("exp_month")
 
   /// Año de expiración de la tarjeta (ej. 2028)
-  expYear           Int      @map("exp_year")
+  expYear Int @map("exp_year")
 
   /// Indica si es el método de pago preferido/predeterminado del usuario
-  isDefault         Boolean  @default(false) @map("is_default")
+  isDefault Boolean @default(false) @map("is_default")
 
   /// Fecha y hora en la que se vinculó el método de pago
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("payment_methods")
 }
-
 
 // ----------------------------------------------------------------------------
 // MODULO INTERNO DE GESTION DE TAREAS (MINI-JIRA EQUIPO)
@@ -346,34 +347,34 @@ enum TaskPriority {
 /// ============================================================================
 model InternalTask {
   /// Identificador único de la tarea
-  id          String       @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Título conciso de la tarea
-  title       String       @db.VarChar(200)
+  title String @db.VarChar(200)
 
   /// Descripción o requerimientos de la tarea
-  description String?      @db.Text
+  description String? @db.Text
 
   /// Estado en el tablero Kanban
-  status      TaskStatus   @default(TODO)
+  status TaskStatus @default(TODO)
 
   /// Prioridad de la tarea
-  priority    TaskPriority @default(MEDIUM)
+  priority TaskPriority @default(MEDIUM)
 
   /// Miembro asignado (Paulo, Diego, Karla, Christian, Axel, Uriel)
-  assignee    String       @db.VarChar(50)
+  assignee String @db.VarChar(50)
 
   /// Creador / Administrador que asignó la tarea
-  createdBy   String       @default("Paulo") @map("created_by") @db.VarChar(50)
+  createdBy String @default("Paulo") @map("created_by") @db.VarChar(50)
 
   /// Fecha límite opcional de entrega
-  dueDate     DateTime?    @map("due_date") @db.Timestamptz(6)
+  dueDate DateTime? @map("due_date") @db.Timestamptz(6)
 
   /// Fecha de creación
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   /// Fecha de última actualización
-  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([assignee])
   @@index([status])
@@ -402,16 +403,16 @@ enum ProjectStatus {
 }
 
 model Project {
-  id            String        @id @default(uuid()) @db.Uuid
-  clientId      String        @map("client_id") @db.Uuid
-  title         String        @db.VarChar(150)
-  description   String        @db.Text
-  budget        Decimal       @db.Decimal(12, 2)
-  estimatedDate DateTime      @map("estimated_date") @db.Timestamptz(6)
-  status        ProjectStatus @default(ACTIVE)
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  client        User          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String         @id @default(uuid()) @db.Uuid
+  clientId      String         @map("client_id") @db.Uuid
+  title         String         @db.VarChar(150)
+  description   String         @db.Text
+  budget        Decimal        @db.Decimal(12, 2)
+  estimatedDate DateTime       @map("estimated_date") @db.Timestamptz(6)
+  status        ProjectStatus  @default(ACTIVE)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  client        User           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   skills        ProjectSkill[]
   proposals     Proposal[]
   conversations Conversation[]
@@ -443,9 +444,9 @@ model ProjectSkill {
 // ----------------------------------------------------------------------------
 
 enum ProposalStatus {
-  PENDING   // Propuesta en espera de revisión por el cliente
-  ACCEPTED  // Propuesta aprobada por el cliente para formalizar contrato
-  REJECTED  // Propuesta declinada
+  PENDING // Propuesta en espera de revisión por el cliente
+  ACCEPTED // Propuesta aprobada por el cliente para formalizar contrato
+  REJECTED // Propuesta declinada
 }
 
 /// ============================================================================
@@ -455,40 +456,40 @@ enum ProposalStatus {
 /// ============================================================================
 model Proposal {
   /// Identificador único de la propuesta
-  id            String         @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Convocatoria a la que se postula
-  projectId     String         @map("project_id") @db.Uuid
+  projectId String @map("project_id") @db.Uuid
 
   /// Freelancer que presenta la propuesta
-  freelancerId  String         @map("freelancer_id") @db.Uuid
+  freelancerId String @map("freelancer_id") @db.Uuid
 
   /// Carta de presentación o justificación técnica
-  coverLetter   String         @map("cover_letter") @db.Text
+  coverLetter String @map("cover_letter") @db.Text
 
   /// Monto total cotizado (suma de hitos)
-  totalPrice    Decimal        @map("total_price") @db.Decimal(12, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(12, 2)
 
   /// Tiempo total estimado de entrega en días naturales
-  estimatedDays Int            @map("estimated_days")
+  estimatedDays Int @map("estimated_days")
 
   /// Estado de la propuesta
-  status        ProposalStatus @default(PENDING)
+  status ProposalStatus @default(PENDING)
 
   /// Fecha de registro de la postulación
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   /// Fecha de última actualización de la postulación
-  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  freelancer    User           @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
-  milestones    MilestoneQuote[]
-  contract      Contract?
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  freelancer User             @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  milestones MilestoneQuote[]
+  contract   Contract?
 
   /// Regla anti-abuso a nivel de persistencia: un freelancer solo puede tener 1 propuesta por proyecto
   @@unique([projectId, freelancerId], name: "unique_project_freelancer_proposal")
@@ -506,53 +507,52 @@ model Proposal {
 /// ============================================================================
 model MilestoneQuote {
   /// Identificador único del hito cotizado
-  id           String    @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
 
   /// Propuesta a la que pertenece el hito
-  proposalId   String    @map("proposal_id") @db.Uuid
+  proposalId String @map("proposal_id") @db.Uuid
 
   /// Nombre conciso del entregable / hito
-  title        String    @db.VarChar(150)
+  title String @db.VarChar(150)
 
   /// Detalle o criterios de aceptación del entregable
-  description  String?   @db.Text
+  description String? @db.Text
 
   /// Monto económico asignado a este hito específico
-  amount       Decimal   @db.Decimal(12, 2)
+  amount Decimal @db.Decimal(12, 2)
 
   /// Días estimados para completar este hito
-  deliveryDays Int       @map("delivery_days")
+  deliveryDays Int @map("delivery_days")
 
   /// Orden secuencial del hito en el plan de trabajo (1, 2, 3...)
-  order        Int       @default(1)
+  order Int @default(1)
 
   /// Fecha de registro del hito
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // --------------------------------------------------------------------------
   // RELACIONES
   // --------------------------------------------------------------------------
 
-  proposal     Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
   @@index([proposalId])
   @@index([proposalId, order])
   @@map("milestone_quotes")
 }
 
-
 // ----------------------------------------------------------------------------
 // MODULO DE MENSAJERIA / CHATS EN TIEMPO REAL
 // ----------------------------------------------------------------------------
 
 model Conversation {
-  id           String    @id @default(uuid()) @db.Uuid
-  projectId    String?   @map("project_id") @db.Uuid
-  projectName  String?   @map("project_name") @db.VarChar(150)
-  clientId     String    @map("client_id") @db.Uuid
-  freelancerId String    @map("freelancer_id") @db.Uuid
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String?  @map("project_id") @db.Uuid
+  projectName  String?  @map("project_name") @db.VarChar(150)
+  clientId     String   @map("client_id") @db.Uuid
+  freelancerId String   @map("freelancer_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   client     User      @relation("ClientConversations", fields: [clientId], references: [id], onDelete: Cascade)
   freelancer User      @relation("FreelancerConversations", fields: [freelancerId], references: [id], onDelete: Cascade)
@@ -566,14 +566,14 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(uuid()) @db.Uuid
-  conversationId String       @map("conversation_id") @db.Uuid
-  senderId       String       @map("sender_id") @db.Uuid
-  content        String       @db.Text
-  attachmentUrl  String?      @map("attachment_url") @db.VarChar(500)
-  isRead         Boolean      @default(false) @map("is_read")
-  readAt         DateTime?    @map("read_at") @db.Timestamptz(6)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  senderId       String    @map("sender_id") @db.Uuid
+  content        String    @db.Text
+  attachmentUrl  String?   @map("attachment_url") @db.VarChar(500)
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
@@ -588,42 +588,43 @@ model Message {
 // ----------------------------------------------------------------------------
 
 enum ContractStatus {
-  DRAFT       // Contrato creado al aceptar propuesta, pendiente de fondeo Escrow
-  FUNDED      // Fondos retenidos en custodia, listo para iniciar trabajo
+  DRAFT // Contrato creado al aceptar propuesta, pendiente de fondeo Escrow
+  FUNDED // Fondos retenidos en custodia, listo para iniciar trabajo
   IN_PROGRESS // Trabajo en curso por el freelancer
-  COMPLETED   // Todos los hitos aprobados y fondos liberados
-  DISPUTED    // En mediación / disputa
+  COMPLETED // Todos los hitos aprobados y fondos liberados
+  DISPUTED // En mediación / disputa
 }
 
 enum ContractMilestoneStatus {
-  PENDING     // En espera
+  PENDING // En espera
   IN_PROGRESS // Freelancer trabajando en el entregable
-  SUBMITTED   // Entregable enviado para revisión
-  APPROVED    // Aprobado y liberado por el cliente
+  SUBMITTED // Entregable enviado para revisión
+  APPROVED // Aprobado y liberado por el cliente
 }
 
 model Contract {
-  id           String              @id @default(uuid()) @db.Uuid
-  projectId    String              @map("project_id") @db.Uuid
-  proposalId   String              @unique @map("proposal_id") @db.Uuid
-  clientId     String              @map("client_id") @db.Uuid
-  freelancerId String              @map("freelancer_id") @db.Uuid
-  totalAmount  Decimal             @map("total_amount") @db.Decimal(12, 2)
-  escrowBalance Decimal            @default(0) @map("escrow_balance") @db.Decimal(12, 2)
-  status       ContractStatus      @default(DRAFT)
-  fundedAt     DateTime?           @map("funded_at") @db.Timestamptz(6)
-  completedAt  DateTime?           @map("completed_at") @db.Timestamptz(6)
-  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String         @id @default(uuid()) @db.Uuid
+  projectId     String         @map("project_id") @db.Uuid
+  proposalId    String         @unique @map("proposal_id") @db.Uuid
+  clientId      String         @map("client_id") @db.Uuid
+  freelancerId  String         @map("freelancer_id") @db.Uuid
+  totalAmount   Decimal        @map("total_amount") @db.Decimal(12, 2)
+  escrowBalance Decimal        @default(0) @map("escrow_balance") @db.Decimal(12, 2)
+  status        ContractStatus @default(DRAFT)
+  fundedAt      DateTime?      @map("funded_at") @db.Timestamptz(6)
+  completedAt   DateTime?      @map("completed_at") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  proposal     Proposal            @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  client       User                @relation("ClientContracts", fields: [clientId], references: [id], onDelete: Cascade)
-  freelancer   User                @relation("FreelancerContracts", fields: [freelancerId], references: [id], onDelete: Cascade)
-  milestones   ContractMilestone[]
+  project    Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  proposal   Proposal            @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  client     User                @relation("ClientContracts", fields: [clientId], references: [id], onDelete: Cascade)
+  freelancer User                @relation("FreelancerContracts", fields: [freelancerId], references: [id], onDelete: Cascade)
+  milestones ContractMilestone[]
 
   changeRequests ContractChangeRequest[]
   versions       ContractVersion[]
+  reviews        Review[]
 
   @@index([projectId])
   @@index([clientId])
@@ -633,22 +634,22 @@ model Contract {
 }
 
 model ContractMilestone {
-  id           String                  @id @default(uuid()) @db.Uuid
-  contractId   String                  @map("contract_id") @db.Uuid
-  title        String                  @db.VarChar(150)
-  description  String?                 @db.Text
-  amount       Decimal                 @db.Decimal(12, 2)
-  deliveryDays Int                     @map("delivery_days")
-  order        Int                     @default(1)
-  status       ContractMilestoneStatus @default(PENDING)
-  deliverableUrl String?               @map("deliverable_url") @db.VarChar(500)
-  deliverableHash String?              @map("deliverable_hash") @db.VarChar(128)
-  submittedAt  DateTime?               @map("submitted_at") @db.Timestamptz(6)
-  approvedAt   DateTime?               @map("approved_at") @db.Timestamptz(6)
-  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id              String                  @id @default(uuid()) @db.Uuid
+  contractId      String                  @map("contract_id") @db.Uuid
+  title           String                  @db.VarChar(150)
+  description     String?                 @db.Text
+  amount          Decimal                 @db.Decimal(12, 2)
+  deliveryDays    Int                     @map("delivery_days")
+  order           Int                     @default(1)
+  status          ContractMilestoneStatus @default(PENDING)
+  deliverableUrl  String?                 @map("deliverable_url") @db.VarChar(500)
+  deliverableHash String?                 @map("deliverable_hash") @db.VarChar(128)
+  submittedAt     DateTime?               @map("submitted_at") @db.Timestamptz(6)
+  approvedAt      DateTime?               @map("approved_at") @db.Timestamptz(6)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  contract     Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([contractId, order])
   @@map("contract_milestones")
@@ -659,41 +660,41 @@ model ContractMilestone {
 // ----------------------------------------------------------------------------
 
 enum WalletTransactionType {
-  DEPOSIT       // Abono / recarga de saldo del cliente
-  ESCROW_HOLD   // Retención de fondos hacia custodia Escrow
+  DEPOSIT // Abono / recarga de saldo del cliente
+  ESCROW_HOLD // Retención de fondos hacia custodia Escrow
   ESCROW_CREDIT // Pago liberado desde Escrow al freelancer
-  SERVICE_FEE   // Comisión de plataforma (10%) descontada automáticamente
-  WITHDRAWAL    // Retiro de fondos a cuenta bancaria (CLABE)
+  SERVICE_FEE // Comisión de plataforma (10%) descontada automáticamente
+  WITHDRAWAL // Retiro de fondos a cuenta bancaria (CLABE)
 }
 
 model Wallet {
-  id               String              @id @default(uuid()) @db.Uuid
-  userId           String              @unique @map("user_id") @db.Uuid
-  availableBalance Decimal             @default(0) @map("available_balance") @db.Decimal(12, 2)
-  escrowLocked     Decimal             @default(0) @map("escrow_locked") @db.Decimal(12, 2)
-  currency         String              @default("MXN") @db.VarChar(10)
-  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  availableBalance Decimal  @default(0) @map("available_balance") @db.Decimal(12, 2)
+  escrowLocked     Decimal  @default(0) @map("escrow_locked") @db.Decimal(12, 2)
+  currency         String   @default("MXN") @db.VarChar(10)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions     WalletTransaction[]
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
 
   @@map("wallets")
 }
 
 model WalletTransaction {
-  id            String                @id @default(uuid()) @db.Uuid
-  walletId      String                @map("wallet_id") @db.Uuid
-  type          WalletTransactionType
-  amount        Decimal               @db.Decimal(12, 2)
-  feeAmount     Decimal               @default(0) @map("fee_amount") @db.Decimal(12, 2)
-  netAmount     Decimal               @map("net_amount") @db.Decimal(12, 2)
-  referenceId   String?               @map("reference_id") @db.VarChar(100)
-  clabeAccount  String?               @map("clabe_account") @db.VarChar(18)
-  description   String                @db.VarChar(255)
-  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String                @id @default(uuid()) @db.Uuid
+  walletId     String                @map("wallet_id") @db.Uuid
+  type         WalletTransactionType
+  amount       Decimal               @db.Decimal(12, 2)
+  feeAmount    Decimal               @default(0) @map("fee_amount") @db.Decimal(12, 2)
+  netAmount    Decimal               @map("net_amount") @db.Decimal(12, 2)
+  referenceId  String?               @map("reference_id") @db.VarChar(100)
+  clabeAccount String?               @map("clabe_account") @db.VarChar(18)
+  description  String                @db.VarChar(255)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  wallet        Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId, createdAt(sort: Desc)])
   @@index([type])
@@ -701,45 +702,70 @@ model WalletTransaction {
 }
 
 // ----------------------------------------------------------------------------
+// MODULO DE RESEÑAS CIEGAS Y FEEDBACK RECIPROCO (HU-13)
+// ----------------------------------------------------------------------------
+
+model Review {
+  id          String    @id @default(uuid()) @db.Uuid
+  contractId  String    @map("contract_id") @db.Uuid
+  reviewerId  String    @map("reviewer_id") @db.Uuid
+  revieweeId  String    @map("reviewee_id") @db.Uuid
+  rating      Int
+  comment     String    @db.Text
+  isPublished Boolean   @default(false) @map("is_published")
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  reviewer User     @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User     @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, reviewerId], name: "unique_contract_reviewer")
+  @@index([revieweeId])
+  @@index([contractId])
+  @@map("reviews")
+}
+
+// ----------------------------------------------------------------------------
 // MODULO DE REGULACIÓN DE ALCANCE - TRIÁNGULO DE HIERRO (FLH-BE-SCOPE / HU-08)
 // ----------------------------------------------------------------------------
 
 enum ChangeRequestStatus {
-  PENDING   // Esperando confirmación/firma de ambas partes
-  APPROVED  // Aprobada por cliente y freelancer -> contrato actualizado
-  REJECTED  // Rechazada por alguna de las partes
+  PENDING // Esperando confirmación/firma de ambas partes
+  APPROVED // Aprobada por cliente y freelancer -> contrato actualizado
+  REJECTED // Rechazada por alguna de las partes
 }
 
 model ContractChangeRequest {
-  id                  String              @id @default(uuid()) @db.Uuid
-  contractId          String              @map("contract_id") @db.Uuid
-  requestedById       String              @map("requested_by_id") @db.Uuid
-  title               String              @db.VarChar(150)
-  description         String              @db.Text
+  id            String @id @default(uuid()) @db.Uuid
+  contractId    String @map("contract_id") @db.Uuid
+  requestedById String @map("requested_by_id") @db.Uuid
+  title         String @db.VarChar(150)
+  description   String @db.Text
 
   // Impacto calculado por el Triángulo de Hierro
-  baseAmountSnapshot  Decimal             @map("base_amount_snapshot") @db.Decimal(12, 2)
-  baseDaysSnapshot    Int                 @map("base_days_snapshot")
-  addedDeliverables   Json                @map("added_deliverables") // Array de entregables solicitados
-  complexityFactor    Float               @default(1.0) @map("complexity_factor")
-  suggestedAddedDays  Int                 @map("suggested_added_days")
-  suggestedAddedCost  Decimal             @map("suggested_added_cost") @db.Decimal(12, 2)
-  dailyRateApplied    Decimal             @map("daily_rate_applied") @db.Decimal(12, 2)
+  baseAmountSnapshot Decimal @map("base_amount_snapshot") @db.Decimal(12, 2)
+  baseDaysSnapshot   Int     @map("base_days_snapshot")
+  addedDeliverables  Json    @map("added_deliverables") // Array de entregables solicitados
+  complexityFactor   Float   @default(1.0) @map("complexity_factor")
+  suggestedAddedDays Int     @map("suggested_added_days")
+  suggestedAddedCost Decimal @map("suggested_added_cost") @db.Decimal(12, 2)
+  dailyRateApplied   Decimal @map("daily_rate_applied") @db.Decimal(12, 2)
 
   // Flujo de doble firma / confirmación digital
-  clientApproved      Boolean             @default(false) @map("client_approved")
-  clientSignedAt      DateTime?           @map("client_signed_at") @db.Timestamptz(6)
-  clientSignature     String?             @map("client_signature") @db.VarChar(128)
-  freelancerApproved  Boolean             @default(false) @map("freelancer_approved")
-  freelancerSignedAt  DateTime?           @map("freelancer_signed_at") @db.Timestamptz(6)
-  freelancerSignature String?             @map("freelancer_signature") @db.VarChar(128)
+  clientApproved      Boolean   @default(false) @map("client_approved")
+  clientSignedAt      DateTime? @map("client_signed_at") @db.Timestamptz(6)
+  clientSignature     String?   @map("client_signature") @db.VarChar(128)
+  freelancerApproved  Boolean   @default(false) @map("freelancer_approved")
+  freelancerSignedAt  DateTime? @map("freelancer_signed_at") @db.Timestamptz(6)
+  freelancerSignature String?   @map("freelancer_signature") @db.VarChar(128)
 
-  status              ChangeRequestStatus @default(PENDING)
-  resolvedAt          DateTime?           @map("resolved_at") @db.Timestamptz(6)
-  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  status     ChangeRequestStatus @default(PENDING)
+  resolvedAt DateTime?           @map("resolved_at") @db.Timestamptz(6)
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  contract            Contract            @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([contractId])
   @@index([status])
@@ -755,10 +781,10 @@ model ContractVersion {
   reason          String   @db.VarChar(255)
   totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
   totalDays       Int      @map("total_days")
-  snapshot        Json     // Copia inmutable del contrato + hitos en esa versión
+  snapshot        Json // Copia inmutable del contrato + hitos en esa versión
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([contractId, versionNumber])
   @@index([contractId, versionNumber])
