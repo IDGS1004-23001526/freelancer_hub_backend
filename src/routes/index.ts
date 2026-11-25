@@ -13,6 +13,7 @@ import { proposalRouter } from '../presentation/routes/proposal.routes.js';
 import { contractRouter } from '../presentation/routes/contract.routes.js';
 import { milestoneRouter } from '../presentation/routes/milestone.routes.js';
 import { walletRouter } from '../presentation/routes/wallet.routes.js';
+import { reviewRouter } from '../presentation/routes/review.routes.js';
 import { chatRouter } from './chat.routes.js';
 
 
@@ -50,6 +51,9 @@ apiRouter.use('/milestones', milestoneRouter);
 
 // Rutas de la API v1 (Módulo de Billetera Digital, Service Fee y Retiros - FLH-WALLET-01)
 apiRouter.use('/v1/wallet', walletRouter);
+
+// Rutas de la API v1 (Módulo de Reseñas Ciegas - HU-13)
+apiRouter.use('/v1/reviews', reviewRouter);
 
 // Rutas de la API v1 (Módulo de Chats y Mensajería en Tiempo Real)
 apiRouter.use('/v1/chats', chatRouter);
