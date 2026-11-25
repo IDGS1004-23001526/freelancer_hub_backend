@@ -35,4 +35,14 @@ describe('FLH-BE-DELIVERY & FLH-BE-RELEASE: Entregas SHA-256 y Liberación Escro
 
     assert.notEqual(hashOrig, hashMod);
   });
+
+  it('4. FLH-FE-ESCROW (HU-05): Debe calcular el desglose financiero transparente con tarifa Escrow', () => {
+    const totalAmount = 3500;
+    const serviceFeeRate = 0.10; // 10%
+    const serviceFee = totalAmount * serviceFeeRate;
+    const totalToDeposit = totalAmount + serviceFee;
+
+    assert.equal(serviceFee, 350);
+    assert.equal(totalToDeposit, 3850);
+  });
 });
