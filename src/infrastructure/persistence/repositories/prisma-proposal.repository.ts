@@ -65,11 +65,45 @@ export class PrismaProposalRepository implements IProposalRepository {
     public async findByProjectId(projectId: string): Promise<Proposal[]> {
         const rows = await this.prisma.proposal.findMany({
             where: { projectId },
-            include: { milestones: { orderBy: { order: 'asc' } } },
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                freelancer: {
+                    select: {
+                        id: true,
+                        email: true,
+                        profile: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                professionalTitle: true,
+                                avatarUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
             orderBy: { createdAt: 'desc' },
         });
 
-        return rows.map((r) => this.mapToDomain(r));
+        return rows.map((r: any) => {
+            const domain = this.mapToDomain(r);
+            const profile = r.freelancer?.profile;
+            const fullName =
+                [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+                r.freelancer?.email?.split('@')[0] ||
+                'Freelancer';
+            return Object.assign(domain, {
+                freelancerName: fullName,
+                freelancerRole: profile?.professionalTitle || 'Profesional Independiente',
+                freelancer: {
+                    id: r.freelancer?.id,
+                    firstName: profile?.firstName || fullName,
+                    lastName: profile?.lastName || '',
+                    professionalTitle: profile?.professionalTitle || 'Profesional Independiente',
+                    avatarUrl: profile?.avatarUrl || null,
+                },
+            });
+        });
     }
 
     public async findByFreelancerId(freelancerId: string): Promise<Proposal[]> {
