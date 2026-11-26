@@ -46,6 +46,24 @@ export class ProjectController {
     };
 
     /**
+     * Consulta el detalle de una convocatoria individual por ID
+     */
+    public getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const projectId = String(req.params.id);
+            const proyecto = await this.getProjectsUseCase.getById(projectId);
+
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                data: proyecto,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    /**
      * Crea una nueva convocatoria para el cliente autenticado
      */
     public create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
