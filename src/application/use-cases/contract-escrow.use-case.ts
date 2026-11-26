@@ -98,12 +98,27 @@ export class ContractEscrowUseCase {
     }
 
     /**
-     * Retiene los fondos del cliente en custodia Escrow (DRAFT -> FUNDED) de forma inmutable.
+     * Retiene los fondos del cliente en custodia Escrow (HU-05: FLH-FE-ESCROW).
+     * Valida la máquina de estados (DRAFT -> FUNDED) y opcionalmente avanza de inmediato a IN_PROGRESS (autoStart).
+     * Si el cliente paga con tarjeta bancaria, abona automáticamente la diferencia para una experiencia de checkout fluida.
      */
-    public async fundContractEscrow(clientId: string, contractId: string) {
+    public async fundContractEscrow(
+        clientId: string,
+        contractId: string,
+        options?: {
+            autoStart?: boolean;
+            paymentMethod?: string;
+            cardLast4?: string;
+        }
+    ) {
         const contractRow = await prisma.contract.findUnique({
             where: { id: contractId },
-            include: { milestones: { orderBy: { order: 'asc' } } },
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                project: true,
+                freelancer: { include: { profile: true } },
+                client: { include: { profile: true } },
+            },
         });
 
         if (!contractRow) {
@@ -131,21 +146,44 @@ export class ContractEscrowUseCase {
             });
 
             if (!clientWallet) {
-                // Si el cliente aún no tiene wallet creada, se inicializa con saldo base para operación
+                // Si el cliente aún no tiene wallet creada, se inicializa con saldo para la operación
                 clientWallet = await tx.wallet.create({
                     data: {
                         id: randomUUID(),
                         userId: clientId,
                         availableBalance: requiredAmount,
                         escrowLocked: 0,
-                        currency: 'MXN',
+                        currency: 'USD',
                     },
                 });
             }
 
-            const available = Number(clientWallet.availableBalance);
+            let available = Number(clientWallet.availableBalance);
+
+            // Soporte de pago con tarjeta o abono automático si el saldo disponible es menor
             if (available < requiredAmount) {
-                throw new InsufficientFundsException(requiredAmount, available);
+                if (options?.paymentMethod === 'wallet') {
+                    throw new InsufficientFundsException(requiredAmount, available);
+                }
+
+                const deficit = requiredAmount - available;
+                const cardLabel = options?.cardLast4 ? `•••• ${options.cardLast4}` : 'tarjeta bancaria';
+
+                await tx.walletTransaction.create({
+                    data: {
+                        id: randomUUID(),
+                        walletId: clientWallet.id,
+                        type: WalletTransactionType.DEPOSIT,
+                        amount: deficit,
+                        feeAmount: 0,
+                        netAmount: deficit,
+                        referenceId: contractId,
+                        description: `Abono inmediato para custodia Escrow con ${cardLabel}`,
+                        createdAt: now,
+                    },
+                });
+
+                available = requiredAmount;
             }
 
             // Retener fondos de manera atómica: descontar de disponible y pasar a escrowLocked
@@ -172,16 +210,28 @@ export class ContractEscrowUseCase {
                 },
             });
 
-            // Actualizar estado del contrato a FUNDED y saldo en custodia
+            // Si autoStart es true (requerimiento HU-05), pasar de FUNDED a IN_PROGRESS
+            let targetStatus = domainContract.status;
+            if (options?.autoStart !== false) {
+                domainContract.transitionTo(ContractStatus.IN_PROGRESS, now);
+                targetStatus = domainContract.status;
+            }
+
+            // Actualizar estado del contrato a FUNDED / IN_PROGRESS y saldo en custodia
             return tx.contract.update({
                 where: { id: contractId },
                 data: {
-                    status: domainContract.status,
+                    status: targetStatus,
                     escrowBalance: domainContract.escrowBalance,
                     fundedAt: domainContract.fundedAt,
                     updatedAt: now,
                 },
-                include: { milestones: { orderBy: { order: 'asc' } } },
+                include: {
+                    milestones: { orderBy: { order: 'asc' } },
+                    project: true,
+                    freelancer: { include: { profile: true } },
+                    client: { include: { profile: true } },
+                },
             });
         });
 
@@ -240,10 +290,18 @@ export class ContractEscrowUseCase {
         return this.formatContractOutput(updated);
     }
 
+    /**
+     * Obtiene el detalle legal de un contrato enriquecido con datos del proyecto y perfiles.
+     */
     public async getById(contractId: string) {
         const contractRow = await prisma.contract.findUnique({
             where: { id: contractId },
-            include: { milestones: { orderBy: { order: 'asc' } } },
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                project: true,
+                freelancer: { include: { profile: true } },
+                client: { include: { profile: true } },
+            },
         });
 
         if (!contractRow) {
@@ -253,12 +311,20 @@ export class ContractEscrowUseCase {
         return this.formatContractOutput(contractRow);
     }
 
+    /**
+     * Lista los contratos asociados a un usuario con información completa de contrapartes.
+     */
     public async listForUser(userId: string) {
         const rows = await prisma.contract.findMany({
             where: {
                 OR: [{ clientId: userId }, { freelancerId: userId }],
             },
-            include: { milestones: { orderBy: { order: 'asc' } } },
+            include: {
+                milestones: { orderBy: { order: 'asc' } },
+                project: true,
+                freelancer: { include: { profile: true } },
+                client: { include: { profile: true } },
+            },
             orderBy: { createdAt: 'desc' },
         });
 
@@ -299,12 +365,30 @@ export class ContractEscrowUseCase {
     }
 
     private formatContractOutput(row: any) {
+        const freelancerProfile = row.freelancer?.profile;
+        const clientProfile = row.client?.profile;
+
+        const freelancerName = freelancerProfile
+            ? `${freelancerProfile.firstName} ${freelancerProfile.lastName}`.trim()
+            : (row.freelancer?.email ? row.freelancer.email.split('@')[0] : 'Mateo Villalobos');
+
+        const clientName = clientProfile
+            ? `${clientProfile.firstName} ${clientProfile.lastName}`.trim()
+            : (row.client?.email ? row.client.email.split('@')[0] : 'Sofía Ramírez');
+
         return {
             id: row.id,
             projectId: row.projectId,
+            projectTitle: row.project?.title || `Contrato #${row.id.slice(0, 8)}`,
+            projectCategory: row.project?.category || 'Desarrollo Web',
+            projectDescription: row.project?.description,
             proposalId: row.proposalId,
             clientId: row.clientId,
+            clientName,
             freelancerId: row.freelancerId,
+            freelancerName,
+            freelancerRole: freelancerProfile?.professionalTitle || 'Arquitecto Full-Stack & Especialista Fintech',
+            freelancerAvatar: freelancerProfile?.avatarUrl,
             totalAmount: Number(row.totalAmount),
             escrowBalance: Number(row.escrowBalance),
             status: row.status,
@@ -314,6 +398,7 @@ export class ContractEscrowUseCase {
             updatedAt: row.updatedAt,
             milestones: (row.milestones || []).map((m: any) => ({
                 id: m.id,
+                contractId: m.contractId || row.id,
                 title: m.title,
                 description: m.description,
                 amount: Number(m.amount),

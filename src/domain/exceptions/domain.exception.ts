@@ -285,3 +285,20 @@ export class MilestoneAlreadySubmittedException extends DomainException {
     super('Este hito ya tiene una entrega en revisión. No se permiten nuevas entregas hasta que el cliente dictamine.');
   }
 }
+
+/**
+ * MODULE ======> PAYMENT METHODS (FREEL-31 / PAY-01)
+ */
+export class PaymentMethodNotFoundException extends DomainException {
+  public readonly statusCode = 404;
+  constructor(id: string) {
+    super(`El método de pago con id "${id}" no fue encontrado.`);
+  }
+}
+
+export class PaymentMethodForbiddenException extends DomainException {
+  public readonly statusCode = 403;
+  constructor() {
+    super('No tienes permisos para operar sobre este método de pago.');
+  }
+}

@@ -14,6 +14,7 @@ import { contractRouter } from '../presentation/routes/contract.routes.js';
 import { milestoneRouter } from '../presentation/routes/milestone.routes.js';
 import { walletRouter } from '../presentation/routes/wallet.routes.js';
 import { reviewRouter } from '../presentation/routes/review.routes.js';
+import { paymentMethodRouter } from '../presentation/routes/payment-method.routes.js';
 import { chatRouter } from './chat.routes.js';
 
 
@@ -61,4 +62,5 @@ apiRouter.use('/v1/chats', chatRouter);
 // Rutas de la API v1 (Módulo Interno de Tareas / Mini-Jira Equipo)
 apiRouter.use('/v1/internal/tasks', internalTasksRouter);
 apiRouter.use('/v1/internal/team', internalTeamRouter);
+
 

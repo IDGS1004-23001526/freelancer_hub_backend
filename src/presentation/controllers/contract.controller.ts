@@ -37,29 +37,41 @@ export class ContractController {
         }
     };
 
+    /**
+     * @ruta POST /api/v1/contracts/:id/fund
+     * @descripcion Formaliza el depósito en garantía reteniendo fondos en custodia Escrow (HU-05: FLH-FE-ESCROW).
+     * Soporta pago con tarjeta bancaria o saldo de billetera, y avanza el estado a IN_PROGRESS si autoStart=true.
+     */
     public fund = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const claims = req.user;
             if (!claims) throw new InvalidTokenException();
 
             const contractId = String(req.params.id);
+            const { autoStart, paymentMethod, cardLast4 } = req.body;
+
             const result = await this.contractEscrowUseCase.fundContractEscrow(
                 claims.sub,
-                contractId
+                contractId,
+                { autoStart: autoStart ?? true, paymentMethod, cardLast4 }
             );
 
-            Container.logger.info('Fondos retenidos en custodia Escrow', {
+            Container.logger.info('Fondos retenidos en custodia Escrow exitosamente', {
                 context: 'ESCROW',
                 action: 'FUND_CONTRACT',
                 statusCode: 200,
                 userId: claims.sub,
                 contractId,
+                status: result.status,
+                escrowBalance: result.escrowBalance,
             });
 
             res.status(200).json({
                 success: true,
                 statusCode: 200,
-                message: 'Fondos retenidos en custodia Escrow exitosamente (Estado: FUNDED).',
+                message: result.status === 'IN_PROGRESS'
+                    ? 'Fondos retenidos en custodia Escrow y contrato iniciado en progreso.'
+                    : 'Fondos retenidos en custodia Escrow exitosamente (Estado: FUNDED).',
                 data: result,
             });
         } catch (error) {

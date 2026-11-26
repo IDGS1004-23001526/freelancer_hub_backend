@@ -41,6 +41,8 @@ import { ContractScopeUseCase } from './application/use-cases/contract-scope.use
 import { SubmitDeliveryUseCase } from './application/use-cases/submit-delivery.use-case.js';
 import { ApproveMilestoneUseCase } from './application/use-cases/approve-milestone.use-case.js';
 import { MilestoneController } from './presentation/controllers/milestone.controller.js';
+import { PaymentMethodUseCase } from './application/use-cases/payment-method.use-case.js';
+import { PaymentMethodController } from './presentation/controllers/payment-method.controller.js';
 
 /**
  * Contenedor de Inversión de Control (IoC) e Inyección de Dependencias.
@@ -185,5 +187,11 @@ export class Container {
   public static readonly milestoneController = new MilestoneController(
     Container.submitDeliveryUseCase,
     Container.approveMilestoneUseCase
+  );
+
+  // Capa de Aplicación + Presentación (Métodos de Pago PCI-DSS - FREEL-31 / PAY-01)
+  public static readonly paymentMethodUseCase = new PaymentMethodUseCase();
+  public static readonly paymentMethodController = new PaymentMethodController(
+    Container.paymentMethodUseCase
   );
 }
