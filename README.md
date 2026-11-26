@@ -326,7 +326,19 @@ pnpm start
 
 ## 🧪 Pruebas Automáticas de Disponibilidad y Logs
 
-Para verificar la disponibilidad y respuesta de los módulos principales (`FRONTEND_WEB`, `PROJECTS_API`, `AUTH_API`, `PROPOSALS_GUARD`, `CHATS_GUARD`) y generar el registro en archivo de log:
+La suite [`src/tests/availability-modules.test.ts`](./src/tests/availability-modules.test.ts) verifica de forma automatizada la disponibilidad, latencia y respuesta funcional de los módulos críticos del sistema, generando registros estructurados para evaluación de niveles de servicio (SLA).
+
+### Módulos verificados
+
+| Módulo | Método y Endpoint | Código esperado | Qué valida |
+| :--- | :--- | :--- | :--- |
+| `FRONTEND_WEB` | `GET /` (Web) | `200` | Disponibilidad de la interfaz web en producción/local |
+| `PROJECTS_API` | `GET /api/v1/projects` | `200` | Catálogo público de convocatorias y conexión a PostgreSQL |
+| `AUTH_API` | `POST /api/v1/auth/login` | `400` / `401` | Procesamiento de autenticación y rechazo de credenciales inválidas |
+| `PROPOSALS_GUARD` | `GET /api/v1/proposals/project/:id` | `401` | Protección JWT activa en el módulo de postulaciones |
+| `CHATS_GUARD` | `GET /api/v1/chats` | `401` | Protección JWT activa en el módulo de mensajería |
+
+### Ejecución
 
 ```bash
 # Contra producción (por defecto)
@@ -336,7 +348,19 @@ pnpm run test:availability
 API_URL=http://localhost:4000/api/v1 WEB_URL=http://localhost:5173 pnpm run test:availability
 ```
 
-Los resultados (timestamp, módulo, status HTTP, latencia en ms y estado `OK`/`FAIL`) se imprimen en consola y se guardan en `logs/availability.log`.
+### Formato de logs (`logs/availability.log`)
+
+Cada ejecución imprime en consola y agrega líneas con marca de tiempo ISO-8601, nivel, módulo, código HTTP, latencia en milisegundos y estado (`OK`/`FAIL`):
+
+```text
+[2026-11-26T05:19:01.146Z] [INFO] [FRONTEND_WEB] GET https://freelancerhub.org status=200 latency=412ms result=OK
+[2026-11-26T05:19:01.543Z] [INFO] [PROJECTS_API] GET https://api.freelancerhub.org/api/v1/projects status=200 latency=396ms result=OK
+[2026-11-26T05:19:01.952Z] [INFO] [AUTH_API] POST https://api.freelancerhub.org/api/v1/auth/login status=401 latency=409ms result=OK
+[2026-11-26T05:19:02.108Z] [INFO] [PROPOSALS_GUARD] GET https://api.freelancerhub.org/api/v1/proposals/project/00000000-0000-0000-0000-000000000000 status=401 latency=156ms result=OK
+[2026-11-26T05:19:02.249Z] [INFO] [CHATS_GUARD] GET https://api.freelancerhub.org/api/v1/chats status=401 latency=141ms result=OK
+```
+
+Estos registros permiten medir el porcentaje de disponibilidad por módulo (`OK / total`) y los tiempos de respuesta (`latency`) para auditoría de SLA.
 
 ---
 
