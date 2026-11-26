@@ -85,4 +85,40 @@ export class ProposalController {
             next(error);
         }
     };
+
+    public getMine = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) {
+                throw new InvalidTokenException();
+            }
+
+            const proposals = await this.proposalRepository.findByFreelancerId(claims.sub);
+
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                data: proposals.map((p) => ({
+                    id: p.id,
+                    projectId: p.projectId,
+                    freelancerId: p.freelancerId,
+                    coverLetter: p.coverLetter,
+                    totalPrice: p.totalPrice,
+                    estimatedDays: p.estimatedDays,
+                    status: p.status,
+                    createdAt: p.createdAt,
+                    milestones: p.milestones.map((m) => ({
+                        id: m.id,
+                        title: m.title,
+                        description: m.description,
+                        amount: m.amount,
+                        deliveryDays: m.deliveryDays,
+                        order: m.order,
+                    })),
+                })),
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 }

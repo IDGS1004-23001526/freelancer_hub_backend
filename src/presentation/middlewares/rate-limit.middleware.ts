@@ -40,7 +40,7 @@ export const createRateLimitMiddleware = (options: RateLimitOptions) => {
     // El Map vive dentro del closure de cada instancia para que distintos endpoints no choquen entre sí
     const hits = new Map<string, RateLimitRecord>();
 
-    return (req: Request, res: Response, next: NextFunction): void => {
+    const middleware = (req: Request, res: Response, next: NextFunction): void => {
         const now = Date.now();
         const clientIdentifier = keyGenerator(req);
         const key = `${keyPrefix}:${clientIdentifier}`;
@@ -96,4 +96,20 @@ export const createRateLimitMiddleware = (options: RateLimitOptions) => {
 
         next();
     };
+
+    middleware.reset = (): void => {
+        hits.clear();
+    };
+
+    return middleware;
 };
+
+export const createRateLimiter = createRateLimitMiddleware;
+
+export const authRateLimiter = createRateLimitMiddleware({
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000,
+    keyPrefix: 'auth',
+    keyGenerator: (req: Request) => req.ip ?? 'anonymous',
+    message: 'Demasiados intentos de autenticación. Intenta de nuevo en 15 minutos.',
+});
