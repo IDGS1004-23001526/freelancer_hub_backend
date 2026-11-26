@@ -52,6 +52,7 @@ apiRouter.use('/milestones', milestoneRouter);
 
 // Rutas de la API v1 (Módulo de Billetera Digital, Service Fee y Retiros - FLH-WALLET-01)
 apiRouter.use('/v1/wallet', walletRouter);
+apiRouter.use('/v1/payment-methods', paymentMethodRouter);
 
 // Rutas de la API v1 (Módulo de Reseñas Ciegas - HU-13)
 apiRouter.use('/v1/reviews', reviewRouter);

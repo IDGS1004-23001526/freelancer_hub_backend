@@ -42,3 +42,17 @@ export type UpdateContractStatusDto = z.infer<typeof updateContractStatusSchema>
 export type DepositWalletDto = z.infer<typeof depositWalletSchema>;
 export type WithdrawWalletDto = z.infer<typeof withdrawWalletSchema>;
 export type CreditEscrowDto = z.infer<typeof creditEscrowSchema>;
+
+export const openDisputeSchema = z.object({
+    reason: z
+        .string({ required_error: 'El motivo de la disputa es obligatorio' })
+        .trim()
+        .min(10, 'Describe el motivo de la disputa (mínimo 10 caracteres)')
+        .max(2000),
+});
+
+export const resolveDisputeSchema = z.object({
+    resolution: z.enum(['RESUME', 'REFUND', 'RELEASE'], {
+        required_error: 'La resolución es obligatoria',
+    }),
+});

@@ -52,3 +52,17 @@ proposalRouter.get(
     roleGuard([UserRole.CLIENT, UserRole.ADMIN]),
     Container.proposalController.getByProject
 );
+
+proposalRouter.post(
+    '/:id/reject',
+    Container.authMiddleware,
+    roleGuard([UserRole.CLIENT]),
+    Container.proposalController.reject
+);
+
+proposalRouter.post(
+    '/:id/withdraw',
+    Container.authMiddleware,
+    roleGuard([UserRole.FREELANCER]),
+    Container.proposalController.withdraw
+);

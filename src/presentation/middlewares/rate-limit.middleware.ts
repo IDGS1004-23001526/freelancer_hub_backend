@@ -107,7 +107,8 @@ export const createRateLimitMiddleware = (options: RateLimitOptions) => {
 export const createRateLimiter = createRateLimitMiddleware;
 
 export const authRateLimiter = createRateLimitMiddleware({
-    maxRequests: 5,
+    // Ajustable por entorno (p. ej. para correr la suite automática en local); 5 por defecto.
+    maxRequests: Number(process.env.AUTH_RATE_LIMIT_MAX) || 5,
     windowMs: 15 * 60 * 1000,
     keyPrefix: 'auth',
     keyGenerator: (req: Request) => req.ip ?? 'anonymous',

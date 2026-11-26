@@ -9,6 +9,8 @@ import {
     MilestoneNotFoundException,
     UnauthorizedMilestoneActionException,
     MilestoneAlreadyApprovedException,
+    ContractNotFundedException,
+    InvalidStateActionException,
 } from '../../domain/exceptions/domain.exception.js';
 
 export interface ApproveMilestoneInput {
@@ -53,27 +55,57 @@ export class ApproveMilestoneUseCase {
             throw new MilestoneAlreadyApprovedException();
         }
 
+        if (
+            contract.status !== ContractStatus.FUNDED &&
+            contract.status !== ContractStatus.IN_PROGRESS
+        ) {
+            throw new ContractNotFundedException();
+        }
+
+        if (milestone.status !== ContractMilestoneStatus.SUBMITTED) {
+            throw new InvalidStateActionException(
+                'Solo se puede aprobar un hito con entregable enviado (SUBMITTED).'
+            );
+        }
+
         const grossAmount = Number(milestone.amount);
         const { gross, fee, net } = Wallet.calculateServiceFee(grossAmount);
         const now = new Date();
 
         const result = await prisma.$transaction(async (tx) => {
             // 1. Pasar estado del hito a APPROVED
-            const updatedMilestone = await tx.contractMilestone.update({
-                where: { id: milestone.id },
+            // Actualización condicional: evita doble liberación de pago por requests concurrentes.
+            const claimed = await tx.contractMilestone.updateMany({
+                where: { id: milestone.id, status: ContractMilestoneStatus.SUBMITTED },
                 data: {
                     status: ContractMilestoneStatus.APPROVED,
                     approvedAt: now,
                     updatedAt: now,
                 },
             });
+            if (claimed.count === 0) {
+                throw new MilestoneAlreadyApprovedException();
+            }
+            const updatedMilestone = await tx.contractMilestone.findUniqueOrThrow({
+                where: { id: milestone.id },
+            });
+
+            const freshContract = await tx.contract.findUniqueOrThrow({
+                where: { id: contract.id },
+                include: { milestones: true },
+            });
+            if (Number(freshContract.escrowBalance) < grossAmount) {
+                throw new InvalidStateActionException(
+                    'El saldo en custodia del contrato no cubre el monto del hito.'
+                );
+            }
 
             // 2. Reducir saldo en custodia Escrow del contrato
-            const currentContractEscrow = Number(contract.escrowBalance);
+            const currentContractEscrow = Number(freshContract.escrowBalance);
             const nextContractEscrow = Math.max(0, currentContractEscrow - grossAmount);
 
             // Verificar si todos los hitos del contrato ya están aprobados
-            const remainingUnapproved = contract.milestones
+            const remainingUnapproved = freshContract.milestones
                 .filter((m) => m.id !== milestone.id)
                 .filter((m) => m.status !== ContractMilestoneStatus.APPROVED);
 
@@ -83,7 +115,7 @@ export class ApproveMilestoneUseCase {
                 where: { id: contract.id },
                 data: {
                     escrowBalance: nextContractEscrow,
-                    status: isContractFinished ? ContractStatus.COMPLETED : contract.status,
+                    status: isContractFinished ? ContractStatus.COMPLETED : ContractStatus.IN_PROGRESS,
                     completedAt: isContractFinished ? now : contract.completedAt,
                     updatedAt: now,
                 },
@@ -208,12 +240,21 @@ export class ApproveMilestoneUseCase {
             );
         }
 
+        if (milestone.status !== ContractMilestoneStatus.SUBMITTED) {
+            throw new InvalidStateActionException(
+                'Solo se pueden solicitar correcciones sobre un entregable enviado (SUBMITTED).'
+            );
+        }
+
+        const feedbackText = feedback?.trim() || 'Se han solicitado ajustes técnicos.';
+
         const now = new Date();
 
         const updated = await prisma.contractMilestone.update({
             where: { id: milestoneId },
             data: {
                 status: ContractMilestoneStatus.IN_PROGRESS,
+                correctionFeedback: feedbackText,
                 updatedAt: now,
             },
         });
@@ -222,7 +263,7 @@ export class ApproveMilestoneUseCase {
             id: updated.id,
             contractId: updated.contractId,
             status: updated.status,
-            feedback: feedback || 'Se han solicitado ajustes técnicos.',
+            feedback: feedbackText,
             updatedAt: updated.updatedAt,
         };
     }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Container } from '../../container.js';
 import { validateBody } from '../middlewares/validate-request.middleware.js';
-import { createContractSchema } from '../../application/validation/escrow-wallet.schemas.js';
+import { createContractSchema, openDisputeSchema, resolveDisputeSchema } from '../../application/validation/escrow-wallet.schemas.js';
 import { roleGuard } from '../middlewares/role.middleware.js';
 import { UserRole } from '../../domain/value-objects/user-role.enum.js';
 import { createChangeRequestSchema, signChangeRequestSchema } from '../../application/validation/scope-change.schemas.js';
@@ -61,6 +61,7 @@ contractRouter.post(
 contractRouter.post(
     '/:id/progress',
     Container.authMiddleware,
+    roleGuard([UserRole.FREELANCER]),
     Container.contractController.advanceProgress
 );
 
@@ -88,4 +89,19 @@ contractRouter.get(
     '/:id/versions',
     Container.authMiddleware,
     Container.contractController.getVersions
+);
+
+contractRouter.post(
+    '/:id/dispute',
+    Container.authMiddleware,
+    validateBody(openDisputeSchema),
+    Container.contractController.openDispute
+);
+
+contractRouter.post(
+    '/:id/dispute/resolve',
+    Container.authMiddleware,
+    roleGuard([UserRole.ADMIN]),
+    validateBody(resolveDisputeSchema),
+    Container.contractController.resolveDispute
 );

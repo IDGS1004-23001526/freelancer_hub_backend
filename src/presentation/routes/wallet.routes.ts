@@ -6,6 +6,8 @@ import {
     withdrawWalletSchema,
     creditEscrowSchema,
 } from '../../application/validation/escrow-wallet.schemas.js';
+import { roleGuard } from '../middlewares/role.middleware.js';
+import { UserRole } from '../../domain/value-objects/user-role.enum.js';
 
 export const walletRouter = Router();
 
@@ -48,6 +50,8 @@ walletRouter.post(
 walletRouter.post(
     '/credit-escrow',
     Container.authMiddleware,
+    // Acredita dinero a terceros: operación interna, nunca expuesta a clientes ni freelancers.
+    roleGuard([UserRole.ADMIN]),
     validateBody(creditEscrowSchema),
     Container.walletController.creditEscrow
 );

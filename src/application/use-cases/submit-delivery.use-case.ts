@@ -47,8 +47,8 @@ export class SubmitDeliveryUseCase {
 
         const contract = milestone.contract;
 
-        // Regla: Solo el desarrollador asignado (o el cliente en pruebas) puede someter avances
-        if (contract.freelancerId !== userId && contract.clientId !== userId) {
+        // Regla: Solo el desarrollador asignado puede someter avances
+        if (contract.freelancerId !== userId) {
             throw new UnauthorizedMilestoneActionException(
                 'Solo el freelancer titular de este contrato puede someter entregables.'
             );

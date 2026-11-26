@@ -26,9 +26,10 @@ export const createPaymentMethodSchema = z.object({
      * Puede existir previamente o ser creado en la pasarela antes de llamar aquí.
      */
     gatewayCustomerId: z
-        .string({ required_error: 'El ID de cliente en la pasarela es obligatorio' })
+        .string()
         .min(5, 'El ID de cliente no es válido')
-        .max(255),
+        .max(255)
+        .optional(),
 
     /** Marca de la tarjeta (visa, mastercard, etc.) */
     cardBrand: z.enum(CARD_BRANDS, {

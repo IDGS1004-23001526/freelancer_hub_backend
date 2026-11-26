@@ -39,6 +39,11 @@ reviewRouter.post(
         throw new UnauthorizedContractActionException('No participas en este contrato.');
       }
 
+      if (contract.status !== 'COMPLETED') {
+        res.status(409).json({ success: false, statusCode: 409, message: 'Solo puedes calificar contratos completados.' });
+        return;
+      }
+
       const revieweeId = contract.clientId === claims.sub ? contract.freelancerId : contract.clientId;
 
       const existing = await prisma.review.findUnique({

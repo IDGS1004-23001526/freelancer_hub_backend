@@ -302,3 +302,13 @@ export class PaymentMethodForbiddenException extends DomainException {
     super('No tienes permisos para operar sobre este método de pago.');
   }
 }
+
+/**
+ * Excepción lanzada cuando una acción no es válida para el estado actual del recurso.
+ */
+export class InvalidStateActionException extends DomainException {
+  public readonly statusCode = 409;
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}

@@ -24,6 +24,7 @@ const deliveryUpload = multer({
 milestoneRouter.post(
     '/:id/deliveries',
     Container.authMiddleware,
+    roleGuard([UserRole.FREELANCER]),
     deliveryUpload.single('file'),
     Container.milestoneController.submitDelivery
 );

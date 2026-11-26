@@ -5,13 +5,15 @@ import {
     ContractStatus,
     ContractMilestoneStatus,
 } from '../../domain/entities/contract.entity.js';
-import { WalletTransactionType } from '../../domain/entities/wallet.entity.js';
+import { Wallet, WalletTransactionType } from '../../domain/entities/wallet.entity.js';
 import {
     ProposalNotFoundException,
     ContractAlreadyExistsException,
     ContractNotFoundException,
     UnauthorizedContractActionException,
     InsufficientFundsException,
+    InvalidStateActionException,
+    MilestoneNotFoundException,
 } from '../../domain/exceptions/domain.exception.js';
 
 export class ContractEscrowUseCase {
@@ -42,6 +44,18 @@ export class ContractEscrowUseCase {
             throw new ContractAlreadyExistsException();
         }
 
+        if (proposal.status !== 'PENDING') {
+            throw new InvalidStateActionException(
+                'Solo se pueden formalizar propuestas en estado PENDING.'
+            );
+        }
+
+        if (proposal.project.status !== 'ACTIVE') {
+            throw new InvalidStateActionException(
+                'La convocatoria ya está cerrada y no admite nuevos contratos.'
+            );
+        }
+
         const contractId = randomUUID();
         const now = new Date();
 
@@ -59,6 +73,12 @@ export class ContractEscrowUseCase {
                     status: 'PENDING',
                 },
                 data: { status: 'REJECTED', updatedAt: now },
+            });
+
+            // La convocatoria se cierra al formalizar el contrato para no recibir más propuestas.
+            await tx.project.update({
+                where: { id: proposal.projectId },
+                data: { status: 'CLOSED', updatedAt: now },
             });
 
             // 2. Crear el contrato en estado inicial DRAFT y clonar sus hitos
@@ -151,9 +171,9 @@ export class ContractEscrowUseCase {
                     data: {
                         id: randomUUID(),
                         userId: clientId,
-                        availableBalance: requiredAmount,
+                        availableBalance: 0,
                         escrowLocked: 0,
-                        currency: 'USD',
+                        currency: 'MXN',
                     },
                 });
             }
@@ -162,7 +182,7 @@ export class ContractEscrowUseCase {
 
             // Soporte de pago con tarjeta o abono automático si el saldo disponible es menor
             if (available < requiredAmount) {
-                if (options?.paymentMethod === 'wallet') {
+                if (options?.paymentMethod === 'wallet' || !options?.cardLast4) {
                     throw new InsufficientFundsException(requiredAmount, available);
                 }
 
@@ -252,8 +272,22 @@ export class ContractEscrowUseCase {
             throw new ContractNotFoundException(contractId);
         }
 
-        if (contractRow.freelancerId !== userId && contractRow.clientId !== userId) {
-            throw new UnauthorizedContractActionException();
+        if (contractRow.freelancerId !== userId) {
+            throw new UnauthorizedContractActionException(
+                'Solo el freelancer del contrato puede registrar avances.'
+            );
+        }
+
+        if (milestoneId) {
+            const target = contractRow.milestones.find((m) => m.id === milestoneId);
+            if (!target) {
+                throw new MilestoneNotFoundException(milestoneId);
+            }
+            if (target.status !== ContractMilestoneStatus.PENDING) {
+                throw new InvalidStateActionException(
+                    'Solo un hito en estado PENDING puede pasar a IN_PROGRESS.'
+                );
+            }
         }
 
         const domainContract = this.mapToDomain(contractRow);
@@ -293,7 +327,7 @@ export class ContractEscrowUseCase {
     /**
      * Obtiene el detalle legal de un contrato enriquecido con datos del proyecto y perfiles.
      */
-    public async getById(contractId: string) {
+    public async getById(contractId: string, userId: string, role?: string) {
         const contractRow = await prisma.contract.findUnique({
             where: { id: contractId },
             include: {
@@ -308,7 +342,166 @@ export class ContractEscrowUseCase {
             throw new ContractNotFoundException(contractId);
         }
 
+        if (role !== 'ADMIN' && contractRow.clientId !== userId && contractRow.freelancerId !== userId) {
+            throw new UnauthorizedContractActionException('No participas en este contrato.');
+        }
+
         return this.formatContractOutput(contractRow);
+    }
+
+    /**
+     * Abre una disputa sobre un contrato en curso. Bloquea entregas y aprobaciones
+     * hasta que un administrador la resuelva.
+     */
+    public async openDispute(userId: string, contractId: string, reason: string) {
+        const contractRow = await prisma.contract.findUnique({
+            where: { id: contractId },
+            include: { milestones: { orderBy: { order: 'asc' } } },
+        });
+
+        if (!contractRow) {
+            throw new ContractNotFoundException(contractId);
+        }
+
+        if (contractRow.clientId !== userId && contractRow.freelancerId !== userId) {
+            throw new UnauthorizedContractActionException('No participas en este contrato.');
+        }
+
+        const domainContract = this.mapToDomain(contractRow);
+        const now = new Date();
+        domainContract.transitionTo(ContractStatus.DISPUTED, now);
+
+        const updated = await prisma.contract.update({
+            where: { id: contractId },
+            data: {
+                status: ContractStatus.DISPUTED,
+                disputeReason: reason,
+                disputeOpenedById: userId,
+                disputeOpenedAt: now,
+                updatedAt: now,
+            },
+            include: { milestones: { orderBy: { order: 'asc' } } },
+        });
+
+        return this.formatContractOutput(updated);
+    }
+
+    /**
+     * Resuelve una disputa (solo ADMIN):
+     * - RESUME: el contrato vuelve a IN_PROGRESS.
+     * - REFUND: el saldo en custodia regresa al cliente y el contrato se cierra.
+     * - RELEASE: el saldo en custodia se paga al freelancer (con comisión) y el contrato se cierra.
+     */
+    public async resolveDispute(contractId: string, resolution: 'RESUME' | 'REFUND' | 'RELEASE') {
+        const contractRow = await prisma.contract.findUnique({
+            where: { id: contractId },
+            include: { milestones: { orderBy: { order: 'asc' } } },
+        });
+
+        if (!contractRow) {
+            throw new ContractNotFoundException(contractId);
+        }
+
+        const domainContract = this.mapToDomain(contractRow);
+        const now = new Date();
+        const nextStatus = resolution === 'RESUME' ? ContractStatus.IN_PROGRESS : ContractStatus.COMPLETED;
+        domainContract.transitionTo(nextStatus, now);
+
+        const escrow = Number(contractRow.escrowBalance);
+
+        const updated = await prisma.$transaction(async (tx) => {
+            // Bloqueo optimista: solo procede si el contrato sigue en disputa.
+            const guard = await tx.contract.updateMany({
+                where: { id: contractId, status: ContractStatus.DISPUTED },
+                data: { updatedAt: now },
+            });
+            if (guard.count === 0) {
+                throw new InvalidStateActionException('El contrato ya no está en disputa.');
+            }
+
+            if (resolution !== 'RESUME' && escrow > 0) {
+                const clientWallet = await tx.wallet.findUnique({ where: { userId: contractRow.clientId } });
+                if (clientWallet) {
+                    await tx.wallet.update({
+                        where: { id: clientWallet.id },
+                        data: {
+                            escrowLocked: Math.max(0, Number(clientWallet.escrowLocked) - escrow),
+                            availableBalance:
+                                resolution === 'REFUND'
+                                    ? Number(clientWallet.availableBalance) + escrow
+                                    : Number(clientWallet.availableBalance),
+                            updatedAt: now,
+                        },
+                    });
+                    if (resolution === 'REFUND') {
+                        await tx.walletTransaction.create({
+                            data: {
+                                id: randomUUID(),
+                                walletId: clientWallet.id,
+                                type: WalletTransactionType.DEPOSIT,
+                                amount: escrow,
+                                feeAmount: 0,
+                                netAmount: escrow,
+                                referenceId: contractId,
+                                description: `Reembolso de custodia Escrow por disputa #${contractId.slice(0, 8)}`,
+                                createdAt: now,
+                            },
+                        });
+                    }
+                }
+
+                if (resolution === 'RELEASE') {
+                    const { fee, net } = Wallet.calculateServiceFee(escrow);
+                    let freelancerWallet = await tx.wallet.findUnique({ where: { userId: contractRow.freelancerId } });
+                    if (!freelancerWallet) {
+                        freelancerWallet = await tx.wallet.create({
+                            data: {
+                                id: randomUUID(),
+                                userId: contractRow.freelancerId,
+                                availableBalance: 0,
+                                escrowLocked: 0,
+                                currency: 'MXN',
+                            },
+                        });
+                    }
+                    await tx.walletTransaction.create({
+                        data: {
+                            id: randomUUID(),
+                            walletId: freelancerWallet.id,
+                            type: WalletTransactionType.ESCROW_CREDIT,
+                            amount: escrow,
+                            feeAmount: fee,
+                            netAmount: net,
+                            referenceId: contractId,
+                            description: `Liberación de custodia por resolución de disputa #${contractId.slice(0, 8)}`,
+                            createdAt: now,
+                        },
+                    });
+                    await tx.wallet.update({
+                        where: { id: freelancerWallet.id },
+                        data: {
+                            availableBalance: Number(freelancerWallet.availableBalance) + net,
+                            updatedAt: now,
+                        },
+                    });
+                }
+            }
+
+            return tx.contract.update({
+                where: { id: contractId },
+                data: {
+                    status: nextStatus,
+                    escrowBalance: resolution === 'RESUME' ? contractRow.escrowBalance : 0,
+                    completedAt: nextStatus === ContractStatus.COMPLETED ? now : contractRow.completedAt,
+                    disputeResolution: resolution,
+                    disputeResolvedAt: now,
+                    updatedAt: now,
+                },
+                include: { milestones: { orderBy: { order: 'asc' } } },
+            });
+        });
+
+        return this.formatContractOutput(updated);
     }
 
     /**

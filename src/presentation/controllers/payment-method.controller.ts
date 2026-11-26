@@ -104,4 +104,28 @@ export class PaymentMethodController {
             next(error);
         }
     };
+
+
+    /**
+     * PATCH /api/v1/payment-methods/:id/default
+     * Marca el método de pago como predeterminado para fondeos Escrow.
+     */
+    public setDefault = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+
+            const id = String(req.params['id']);
+            const result = await this.paymentMethodUseCase.setDefaultPaymentMethod(claims.sub, id);
+
+            res.status(200).json({
+                success:    true,
+                statusCode: 200,
+                message:    'Método de pago predeterminado actualizado.',
+                data:       result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 }

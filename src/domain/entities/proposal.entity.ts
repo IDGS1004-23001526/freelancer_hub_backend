@@ -1,7 +1,8 @@
 export enum ProposalStatus {
     PENDING = 'PENDING',
     ACCEPTED = 'ACCEPTED',
-    REJECTED = 'REJECTED'
+    REJECTED = 'REJECTED',
+    WITHDRAWN = 'WITHDRAWN'
 }
 
 export interface MilestoneQuoteProps {

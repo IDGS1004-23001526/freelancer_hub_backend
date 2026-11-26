@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { Profile } from '../domain/entities/profile.entity.js';
 import { Container } from '../container.js';
 import { uploadMiddleware } from '../middlewares/multer.middleware.js';
+import { prisma } from '../infrastructure/persistence/prisma/prisma.client.js';
 
 export const profileRouter = Router();
 const profileRepository = Container.profileRepository;
@@ -21,17 +22,45 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
     profile = new Profile(userId, parts[0] || 'Usuario', parts.slice(1).join(' ') || '');
   }
 
-  const step1 = Boolean(
-    profile.firstName &&
-    profile.lastName &&
-    profile.professionalTitle &&
-    profile.bio &&
-    profile.hourlyRate
-  );
-  const step2 = Boolean(profile.portfolioItems && profile.portfolioItems.length > 0);
-  const step3 = Boolean(profile.skills && profile.skills.length > 0);
-  const completed = [step1, step2, step3].filter(Boolean).length;
-  const percentage = Math.round((completed / 3) * 100);
+  // Los pasos dependen del rol: el flujo de la UI es el mismo, solo cambia qué se verifica.
+  const steps =
+    req.user?.role === 'CLIENT'
+      ? [
+          {
+            id: 'company_profile',
+            isCompleted: Boolean(profile.firstName && profile.bio),
+          },
+          {
+            id: 'payment_method',
+            isCompleted: (await prisma.paymentMethod.count({ where: { userId } })) > 0,
+          },
+          {
+            id: 'first_project',
+            isCompleted: (await prisma.project.count({ where: { clientId: userId } })) > 0,
+          },
+        ]
+      : [
+          {
+            id: 'professional_info',
+            isCompleted: Boolean(
+              profile.firstName &&
+              profile.lastName &&
+              profile.professionalTitle &&
+              profile.bio &&
+              profile.hourlyRate
+            ),
+          },
+          {
+            id: 'portfolio',
+            isCompleted: Boolean(profile.portfolioItems && profile.portfolioItems.length > 0),
+          },
+          {
+            id: 'skills',
+            isCompleted: Boolean(profile.skills && profile.skills.length > 0),
+          },
+        ];
+  const completed = steps.filter((st) => st.isCompleted).length;
+  const percentage = Math.round((completed / steps.length) * 100);
 
   Container.logger.info('Estado de onboarding de perfil consultado', {
     context: 'PROFILE',
@@ -45,15 +74,11 @@ profileRouter.get('/onboarding-status', async (req: Request, res: Response) => {
     success: true,
     statusCode: 200,
     data: {
-      totalSteps: 3,
+      totalSteps: steps.length,
       completedSteps: completed,
       percentage,
-      isFullyCompleted: completed === 3,
-      steps: [
-        { id: 'professional_info', isCompleted: step1 },
-        { id: 'portfolio', isCompleted: step2 },
-        { id: 'skills', isCompleted: step3 },
-      ],
+      isFullyCompleted: completed === steps.length,
+      steps,
     },
   });
 });

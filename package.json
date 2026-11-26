@@ -21,7 +21,12 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "test:sla": "tsx tests/sla/sla-suite.ts",
+    "test:sla:loop": "bash -c 'while true; do tsx tests/sla/sla-suite.ts; sleep ${SLA_INTERVAL_SECONDS:-300}; done'",
+    "sla:report": "tsx tests/sla/sla-report.ts",
+    "test:auto": "bash scripts/run-tests.sh",
+    "test:auto:loop": "bash scripts/run-tests.sh --loop"
   },
   "keywords": [
     "freelancer-hub",

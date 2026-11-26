@@ -35,7 +35,8 @@ export class PaymentMethodUseCase {
             data: {
                 userId,
                 gatewayToken:      dto.gatewayToken,
-                gatewayCustomerId: dto.gatewayCustomerId,
+                // Sin pasarela integrada todavía: el cliente en pasarela se identifica por el usuario.
+                gatewayCustomerId: dto.gatewayCustomerId ?? `cus_${userId}`,
                 cardBrand:         dto.cardBrand,
                 last4:             dto.last4,
                 expMonth:          dto.expMonth,
@@ -103,5 +104,31 @@ export class PaymentMethodUseCase {
         await prisma.paymentMethod.delete({ where: { id: paymentMethodId } });
 
         return { deleted: true, id: paymentMethodId };
+    }
+
+
+    /**
+     * Marca un método de pago del usuario como predeterminado y desmarca los demás.
+     */
+    async setDefaultPaymentMethod(userId: string, paymentMethodId: string) {
+        const existing = await prisma.paymentMethod.findUnique({
+            where: { id: paymentMethodId },
+            select: { id: true, userId: true },
+        });
+
+        if (!existing) {
+            throw new PaymentMethodNotFoundException(paymentMethodId);
+        }
+
+        if (existing.userId !== userId) {
+            throw new PaymentMethodForbiddenException();
+        }
+
+        await prisma.$transaction([
+            prisma.paymentMethod.updateMany({ where: { userId }, data: { isDefault: false } }),
+            prisma.paymentMethod.update({ where: { id: paymentMethodId }, data: { isDefault: true } }),
+        ]);
+
+        return this.getPaymentMethods(userId);
     }
 }

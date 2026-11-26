@@ -116,7 +116,11 @@ export class ContractController {
     public getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const contractId = String(req.params.id);
-            const result = await this.contractEscrowUseCase.getById(contractId);
+            const result = await this.contractEscrowUseCase.getById(
+                contractId,
+                req.user?.sub ?? '',
+                req.user?.role
+            );
 
             Container.logger.info('Detalle de contrato consultado', {
                 context: 'CONTRACT',
@@ -234,6 +238,69 @@ export class ContractController {
             res.status(200).json({
                 success: true,
                 statusCode: 200,
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    /**
+     * @ruta POST /api/v1/contracts/:id/dispute
+     * @descripcion Cliente o freelancer abre una disputa; congela entregas y liberaciones.
+     */
+    public openDispute = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+
+            const contractId = String(req.params.id);
+            const result = await this.contractEscrowUseCase.openDispute(claims.sub, contractId, req.body.reason);
+
+            Container.logger.info('Disputa abierta sobre contrato', {
+                context: 'CONTRACT',
+                action: 'OPEN_DISPUTE',
+                statusCode: 200,
+                userId: claims.sub,
+                contractId,
+            });
+
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                message: 'Disputa abierta. Un mediador revisará el caso.',
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    /**
+     * @ruta POST /api/v1/contracts/:id/dispute/resolve
+     * @descripcion ADMIN resuelve la disputa: RESUME, REFUND o RELEASE.
+     */
+    public resolveDispute = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const claims = req.user;
+            if (!claims) throw new InvalidTokenException();
+
+            const contractId = String(req.params.id);
+            const result = await this.contractEscrowUseCase.resolveDispute(contractId, req.body.resolution);
+
+            Container.logger.info('Disputa resuelta', {
+                context: 'CONTRACT',
+                action: 'RESOLVE_DISPUTE',
+                statusCode: 200,
+                userId: claims.sub,
+                contractId,
+                resolution: req.body.resolution,
+            });
+
+            res.status(200).json({
+                success: true,
+                statusCode: 200,
+                message: 'Disputa resuelta.',
                 data: result,
             });
         } catch (error) {

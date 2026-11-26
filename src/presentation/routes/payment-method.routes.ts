@@ -46,3 +46,9 @@ paymentMethodRouter.delete(
     Container.authMiddleware,
     Container.paymentMethodController.remove
 );
+
+paymentMethodRouter.patch(
+    '/:id/default',
+    Container.authMiddleware,
+    Container.paymentMethodController.setDefault
+);
