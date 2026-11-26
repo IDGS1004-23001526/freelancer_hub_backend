@@ -144,4 +144,27 @@ export class User {
     this._fullName = fullName.trim();
     this._updatedAt = new Date();
   }
+
+  /**
+   * Previene que passwordHash se filtre accidentalmente en JSON.stringify o respuestas directas.
+   */
+  public toJSON(): Record<string, unknown> {
+    return {
+      id: this._id,
+      email: this._email.value,
+      fullName: this._fullName,
+      role: this._role,
+      isVerified: this._isVerified,
+      isActive: this._isActive,
+      createdAt: this._createdAt.toISOString(),
+      updatedAt: this._updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * Previene que passwordHash se filtre en logs de consola (console.log / util.inspect).
+   */
+  public [Symbol.for('nodejs.util.inspect.custom')](): Record<string, unknown> {
+    return this.toJSON();
+  }
 }
