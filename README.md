@@ -324,6 +324,22 @@ pnpm start
 
 ---
 
+## 🧪 Pruebas Automáticas de Disponibilidad y Logs
+
+Para verificar la disponibilidad y respuesta de los módulos principales (`FRONTEND_WEB`, `PROJECTS_API`, `AUTH_API`, `PROPOSALS_GUARD`, `CHATS_GUARD`) y generar el registro en archivo de log:
+
+```bash
+# Contra producción (por defecto)
+pnpm run test:availability
+
+# Contra entorno local
+API_URL=http://localhost:4000/api/v1 WEB_URL=http://localhost:5173 pnpm run test:availability
+```
+
+Los resultados (timestamp, módulo, status HTTP, latencia en ms y estado `OK`/`FAIL`) se imprimen en consola y se guardan en `logs/availability.log`.
+
+---
+
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia **ISC**.
